@@ -2,14 +2,12 @@
 > import System.Environment
 > import Hiss.Data
 > import Hiss.Read (datum)
-> import Hiss.Write
-
-> readDatum :: String -> String
-> readDatum input = case parse datum "hiss" input of
->     Left err -> "No match: " ++ show err
->     Right val -> "Found value " ++ show val
+> import Hiss.Analyze (analyze)
 
 > main :: IO ()
 > main = do
 >          (expr:_) <- getArgs
->          putStrLn (readDatum expr)
+>          case parse datum "hiss" expr of
+>            Left err -> putStrLn $ "No match: " ++ show err
+>            Right val ->
+>              putStrLn $ "Found value " ++ show (analyze val)

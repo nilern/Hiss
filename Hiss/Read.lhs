@@ -1,4 +1,5 @@
 > module Hiss.Read where
+> import Data.Foldable (foldl')
 > import Text.ParserCombinators.Parsec
 > import Hiss.Data
 
@@ -56,6 +57,11 @@ FIXME:
 > signSubsequent :: Parser Char
 > signSubsequent = initial <|> explicitSign <|> char '@'
 
+> number :: Parser Int
+> number = do
+>            ds <- many1 digit
+>            return $ read ds
+
 > boolean :: Parser Bool
 > boolean = do
 >             char '#'
@@ -75,6 +81,7 @@ FIXME:
 
 > simpleDatum :: Parser SValue
 > simpleDatum = Bool <$> boolean
+>               <|> Fixnum <$> number
 >               <|> Symbol <$> identifier
 
 > compoundDatum :: Parser SValue
