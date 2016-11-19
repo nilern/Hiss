@@ -1,5 +1,4 @@
 > module Hiss.Read where
-> import Data.Foldable (foldl')
 > import Text.ParserCombinators.Parsec
 > import Hiss.Data
 
@@ -64,20 +63,18 @@ FIXME:
 
 > boolean :: Parser Bool
 > boolean = do
->             char '#'
->             bc <- char 't' <|> char 'f'
->             case bc of
->               't' -> optional (string "rue") >> return True
->               'f' -> optional (string "alse") >> return False
+>             _ <- char '#'
+>             (char 't' >> optional (string "rue") >> return True)
+>              <|> (char 'f' >> optional (string "alse") >> return False)
 
 > parseList :: Parser SValue
 > parseList = char '(' >> elems
 >     where elems = (char ')' >> return Nil)
 >                   <|> (char '.' >> datum <* char ')')
 >                   <|> do
->                        head <- datum
->                        tail <- elems
->                        return $ Pair head tail
+>                        x <- datum
+>                        xs <- elems
+>                        return $ Pair x xs
 
 > simpleDatum :: Parser SValue
 > simpleDatum = Bool <$> boolean
