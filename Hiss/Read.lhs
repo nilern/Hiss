@@ -27,28 +27,25 @@
 > explicitSign :: Parser Char
 > explicitSign = char '+' <|> char '-'
 
-FIXME:
-
 > peculiarIdentifier :: Parser String
 > peculiarIdentifier = do
->                         s <- explicitSign
->                         d <- char '.'
->                         dsub <- dotSubsequent
->                         subs <- many subsequent
->                         return $ s:d:dsub:subs
->                     <|> do
->                           s <- explicitSign
->                           ssub <- signSubsequent
->                           subs <- many subsequent
->                           return $ s:ssub:subs
->                     <|> do
->                           s <- explicitSign
->                           return [s]
->                     <|> do
->                           d <- char '.'
->                           dsub <- dotSubsequent
->                           subs <- many subsequent
->                           return $ d:dsub:subs
+>                        s <- optionMaybe explicitSign
+>                        case s of
+>                          Just s -> do
+>                                      d <- char '.'
+>                                      dsub <- dotSubsequent
+>                                      subs <- many subsequent
+>                                      return $ s:d:dsub:subs
+>                                    <|> do
+>                                          ssub <- signSubsequent
+>                                          subs <- many subsequent
+>                                          return $ s:ssub:subs
+>                                    <|> return [s]
+>                          Nothing -> do
+>                                       d <- char '.'
+>                                       dsub <- dotSubsequent
+>                                       subs <- many subsequent
+>                                       return $ d:dsub:subs
 
 > dotSubsequent :: Parser Char
 > dotSubsequent = signSubsequent <|> char '.'

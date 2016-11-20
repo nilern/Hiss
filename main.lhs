@@ -7,7 +7,10 @@
 
 > main :: IO ()
 > main = do
->          (expr:_) <- getArgs
+>          args <- getArgs
+>          expr <- case args of
+>                    [filename] -> readFile filename
+>                    ["-e", expr] -> return expr
 >          case parse datum "hiss" expr of
 >            Left err -> putStrLn $ show err
 >            Right val ->
