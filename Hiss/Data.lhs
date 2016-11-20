@@ -33,14 +33,16 @@
 >          | Call AST [AST]
 >          | If AST AST AST
 >          | Begin [AST]
+>          | Set String AST
 >          | Var String
 >          | Const SValue
 >          deriving (Show)
 
-> data Cont = Fn Cont [AST]
->           | Arg Cont SValue [SValue] [AST]
->           | Cond Cont AST AST
->           | Began Cont [AST]
+> data Cont = Fn Cont Env [AST]
+>           | Arg Cont Env SValue [SValue] [AST]
+>           | Cond Cont Env AST AST
+>           | SetName Cont Env String
+>           | Began Cont Env [AST]
 >           | Halt
 
 = Environment
@@ -58,8 +60,8 @@
 > initStore :: Store
 > initStore = Store (listArray (0, 4999) (replicate 5000 Unbound)) 0
 
-> deref :: Store -> Address -> SValue
-> deref (Store vs _) a = vs ! a
+> deref :: Address -> Store -> SValue
+> deref a (Store vs _) = vs ! a
 
 = Errors
 

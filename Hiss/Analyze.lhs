@@ -12,6 +12,9 @@
 >                           (Pair alt Nil)))) = If (analyze cond)
 >                                                  (analyze conseq)
 >                                                  (analyze alt)
+> analyze (Pair (Symbol "set!")
+>               (Pair (Symbol name)
+>                     (Pair v Nil))) = Set name (analyze v)
 > analyze (Pair (Symbol "begin") stmts) = Begin $ map analyze $ ejectList stmts
 > analyze (Pair callee args) =
 >     Call (analyze callee) $ map analyze $ ejectList args
