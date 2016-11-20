@@ -1,5 +1,6 @@
 > module Hiss.Data where
-> import Data.Map.Strict as Map
+> import qualified Data.Map.Strict as Map
+> import Data.Array
 
 = Value Representation
 
@@ -10,6 +11,7 @@
 >             | Closure [String] (Maybe String) AST Env
 >             | Nil
 >             | Unspecified
+>             | Unbound
 
 > instance Show SValue where
 >   show (Symbol cs) = cs
@@ -23,6 +25,7 @@
 >   show (Closure _ _ _ _) = "#<lambda closure>"
 >   show Nil = "()"
 >   show Unspecified = "#<unspecified>"
+>   show Unbound = "#<unbound>"
 
 = Abstract Syntax Tree and Continuations
 
@@ -42,14 +45,25 @@
 
 = Environment
 
-> type Env = Map.Map String SValue
+> type Address = Int
+> type Env = Map.Map String Address
 
 > emptyEnv :: Env
 > emptyEnv = Map.empty
 
+= Store
+
+> data Store = Store (Array Address SValue) Address
+
+> initStore :: Store
+> initStore = Store (listArray (0, 4999) (replicate 5000 Unbound)) 0
+
+> deref :: Store -> Address -> SValue
+> deref (Store vs _) a = vs ! a
+
 = Errors
 
-> data SError = Unbound String
+> data SError = Nonbound String
 >             | NonLambda SValue
 >             | Argc
 >               deriving (Show)

@@ -29,8 +29,8 @@
 
 > peculiarIdentifier :: Parser String
 > peculiarIdentifier = do
->                        s <- optionMaybe explicitSign
->                        case s of
+>                        os <- optionMaybe explicitSign
+>                        case os of
 >                          Just s -> do
 >                                      d <- char '.'
 >                                      dsub <- dotSubsequent
