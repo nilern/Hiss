@@ -1,14 +1,22 @@
 > module Hiss.Data where
+> import Control.Monad.Except (ExceptT)
+> import Control.Monad.State (StateT)
+> import Control.Monad.Identity (Identity)
 > import qualified Data.Map.Strict as Map
 > import Data.Array
 
+> type EvalState t = StateT Store (ExceptT SError Identity) t
+
 = Value Representation
+
+> type BuiltinImpl = [SValue] -> EvalState SValue
 
 > data SValue = Symbol String
 >             | Bool Bool
 >             | Fixnum Int
 >             | Pair SValue SValue
 >             | Closure [String] (Maybe String) AST Env
+>             | Builtin BuiltinImpl
 >             | Nil
 >             | Unspecified
 >             | Unbound
@@ -22,7 +30,8 @@
 >       where showElems (Pair y ys) = ' ' : show y ++ showElems ys
 >             showElems Nil = ")"
 >             showElems y = " . " ++ show y ++ ")"
->   show (Closure _ _ _ _) = "#<lambda closure>"
+>   show (Closure _ _ _ _) = "#<lambda>"
+>   show (Builtin _) = "#<lambda>"
 >   show Nil = "()"
 >   show Unspecified = "#<unspecified>"
 >   show Unbound = "#<unbound>"
@@ -57,15 +66,23 @@
 
 > data Store = Store (Array Address SValue) Address
 
-> initStore :: Store
-> initStore = Store (listArray (0, 4999) (replicate 5000 Unbound)) 0
+> emptyStore :: Store
+> emptyStore = Store (listArray (0, 999999) (replicate 1000000 Unbound)) 0
 
 > deref :: Address -> Store -> SValue
 > deref a (Store vs _) = vs ! a
+
+> alloc :: Store -> SValue -> (Address, Store) -- TODO: GC
+> alloc (Store vs a) v = (a, Store (vs // [(a, v)]) (a + 1))
+
+> def :: Env -> Store -> String -> SValue -> (Env, Store)
+> def e s n v = (Map.insert n a e, s')
+>     where (a, s') = alloc s v
 
 = Errors
 
 > data SError = Nonbound String
 >             | NonLambda SValue
 >             | Argc
+>             | Type
 >               deriving (Show)
