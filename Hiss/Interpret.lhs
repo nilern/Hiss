@@ -7,8 +7,7 @@
 > import Hiss.Data
 
 > interpret :: Env -> Store -> AST -> Either SError SValue
-> interpret e s c = runIdentity $ runExceptT
->                 $ evalStateT (eval e Halt c) s
+> interpret e s c = runIdentity $ runExceptT $ evalStateT (eval e Halt c) s
 
 > eval :: Env -> Cont -> AST -> EvalState SValue
 > eval e k (Lambda fs rf body)  = continue k (Closure fs rf body e)
@@ -31,7 +30,7 @@
 > continue (Cond k e conseq _) _         = eval e k conseq
 > continue (SetName k e name) v          =
 >     case (Map.lookup name e) of
->       Just a -> set a v >> continue k Unspecified
+>       Just a -> modify (set a v) >> continue k Unspecified
 >       Nothing -> throwError $ Nonbound name
 > continue (Began k e (stmt:stmts)) _    = eval e (Began k e stmts) stmt
 > continue (Began k _ []) v              = continue k v
@@ -41,8 +40,12 @@
 > apply k (Closure formals restFormal body env) args =
 >     do e <- bindArgs formals restFormal args env
 >        (eval e k body)
-> apply k (Builtin f) args = f args >>= continue k
-> apply _ v _ = throwError $ NonLambda v
+> apply k (Builtin f) args     = f args >>= continue k
+> apply k CallCC [f]           = apply k f [(Continuation k)]
+> apply k CallCC _             = throwError Argc
+> apply _ (Continuation k) [v] = continue k v
+> apply _ (Continuation k) _   = throwError Argc
+> apply _ v _                  = throwError $ NonLambda v
 
 > bindArgs :: [String] -> Maybe String -> [SValue] -> Env -> EvalState Env
 > bindArgs (f:fs) rf (arg:args) e =
@@ -54,12 +57,5 @@
 >                                   let (a, s') = alloc s $ injectList args
 >                                   put s'
 >                                   return (Map.insert rf a e)
-> bindArgs [] Nothing [] e = return e
-> bindArgs _ _ _ _ = throwError Argc
-
-> set :: Address -> SValue -> EvalState ()
-> set a v = modify (\(Store s n) -> Store (s // [(a, v)]) n)
-
-> injectList :: [SValue] -> SValue
-> injectList (v:vs) = Pair v (injectList vs)
-> injectList [] = Nil
+> bindArgs [] Nothing [] e     = return e
+> bindArgs _ _ _ _             = throwError Argc

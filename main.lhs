@@ -1,7 +1,8 @@
 > import Text.ParserCombinators.Parsec (parse)
 > import System.Environment (getArgs)
 > import Data.List (foldl')
-> import Hiss.Data (SValue(Builtin), Env, Store, emptyEnv, emptyStore, def)
+> import Hiss.Data
+>        (SValue(Builtin, CallCC), Env, Store, emptyEnv, emptyStore, def)
 > import Hiss.Read (datum)
 > import Hiss.Analyze (analyze)
 > import Hiss.Interpret (interpret)
@@ -21,5 +22,6 @@
 >                                 [("+", Builtin Builtins.add),
 >                                  ("-", Builtin Builtins.sub),
 >                                  ("*", Builtin Builtins.mul),
->                                  ("<", Builtin Builtins.lt)]
+>                                  ("<", Builtin Builtins.lt),
+>                                  ("call/cc", CallCC)]
 >           step (e, s) (n, v) = def e s n v

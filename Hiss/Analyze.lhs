@@ -26,7 +26,3 @@
 >     where (formals, restFormal) = analyzeFormals fs
 > analyzeFormals (Symbol rf) = ([], Just rf)
 > analyzeFormals Nil = ([], Nothing)
-
-> ejectList :: SValue -> [SValue]
-> ejectList (Pair x xs) = x : ejectList xs
-> ejectList Nil = []

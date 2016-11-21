@@ -18,6 +18,8 @@
 >             | Closure [String] (Maybe String) AST Env
 >             | Builtin BuiltinImpl
 >             | Nil
+>             | Continuation Cont
+>             | CallCC
 >             | Unspecified
 >             | Unbound
 
@@ -33,8 +35,18 @@
 >   show (Closure _ _ _ _) = "#<lambda>"
 >   show (Builtin _) = "#<lambda>"
 >   show Nil = "()"
+>   show (Continuation _) = "#<lambda>"
+>   show CallCC = "#<lambda>"
 >   show Unspecified = "#<unspecified>"
 >   show Unbound = "#<unbound>"
+
+> injectList :: [SValue] -> SValue
+> injectList (v:vs) = Pair v (injectList vs)
+> injectList [] = Nil
+
+> ejectList :: SValue -> [SValue]
+> ejectList (Pair x xs) = x : ejectList xs
+> ejectList Nil = []
 
 = Abstract Syntax Tree and Continuations
 
@@ -74,6 +86,9 @@
 
 > alloc :: Store -> SValue -> (Address, Store) -- TODO: GC
 > alloc (Store vs a) v = (a, Store (vs // [(a, v)]) (a + 1))
+
+> set :: Address -> SValue -> Store -> Store
+> set a v (Store vs n) = Store (vs // [(a, v)]) n
 
 > def :: Env -> Store -> String -> SValue -> (Env, Store)
 > def e s n v = (Map.insert n a e, s')
