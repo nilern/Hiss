@@ -83,3 +83,6 @@
 
 > datum :: Parser SValue
 > datum = between spaces spaces (simpleDatum <|> compoundDatum)
+
+> datums :: Parser [SValue]
+> datums = manyTill datum eof

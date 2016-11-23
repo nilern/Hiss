@@ -2,8 +2,8 @@
 > import System.Environment (getArgs)
 > import Data.List (foldl')
 > import Hiss.Data
->        (SValue(Builtin, CallCC), emptyEnv, emptyStore, def)
-> import Hiss.Read (datum)
+>        (SValue(Symbol, Builtin, CallCC), emptyEnv, emptyStore, def, injectList)
+> import Hiss.Read (datums)
 > import Hiss.Analyze (analyze)
 > import Hiss.Interpret (interpret)
 > import qualified Hiss.Builtins as Builtins
@@ -14,10 +14,10 @@
 >          expr <- case args of
 >                    [filename] -> readFile filename
 >                    ["-e", expr] -> return expr
->          case parse datum "hiss" expr of
+>          case parse datums "hiss" expr of
 >            Left err -> putStrLn $ show err
->            Right val -> let (e, s) = initEnvStore in
->                           show <$> interpret e s (analyze val) >>= putStrLn
+>            Right vals -> let (e, s) = initEnvStore in
+>                            evalPrint e s $ injectList (Symbol "begin" : vals)
 >     where initEnvStore = foldl' step (emptyEnv, emptyStore)
 >                                 [("+", Builtin Builtins.add),
 >                                  ("-", Builtin Builtins.sub),
@@ -27,3 +27,4 @@
 >                                  ("define", Builtin Builtins.defglobal),
 >                                  ("call/cc", CallCC)]
 >           step (e, s) (n, v) = def e s n v
+>           evalPrint e s val = show <$> interpret e s (analyze val) >>= putStrLn
