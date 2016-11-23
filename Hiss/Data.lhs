@@ -1,11 +1,11 @@
 > module Hiss.Data where
 > import Control.Monad.Except (ExceptT)
 > import Control.Monad.State (StateT)
-> import Control.Monad.Identity (Identity)
 > import qualified Data.Map.Strict as Map
 > import Data.Array
+> import System.IO (Handle)
 
-> type EvalState t = StateT Store (ExceptT SError Identity) t
+> type EvalState t = StateT (Env, Store) (ExceptT SError IO) t
 
 = Value Representation
 
@@ -17,6 +17,7 @@
 >             | Pair SValue SValue
 >             | Closure [String] (Maybe String) AST Env
 >             | Builtin BuiltinImpl
+>             | Port Handle
 >             | Nil
 >             | Continuation Cont
 >             | CallCC
@@ -34,6 +35,7 @@
 >             showElems y = " . " ++ show y ++ ")"
 >   show (Closure _ _ _ _) = "#<lambda>"
 >   show (Builtin _) = "#<lambda>"
+>   show (Port _) = "#<port>"
 >   show Nil = "()"
 >   show (Continuation _) = "#<lambda>"
 >   show CallCC = "#<lambda>"

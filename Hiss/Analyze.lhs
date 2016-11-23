@@ -12,6 +12,10 @@
 >                           (Pair alt Nil)))) = If (analyze cond)
 >                                                  (analyze conseq)
 >                                                  (analyze alt)
+> analyze (Pair (Symbol "define")
+>               (Pair (Symbol name)
+>                     (Pair v Nil))) = Call (Var "define")
+>                                           [Const $ Symbol name, analyze v]
 > analyze (Pair (Symbol "set!")
 >               (Pair (Symbol name)
 >                     (Pair v Nil))) = Set name (analyze v)

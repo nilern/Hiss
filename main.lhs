@@ -2,7 +2,7 @@
 > import System.Environment (getArgs)
 > import Data.List (foldl')
 > import Hiss.Data
->        (SValue(Builtin, CallCC), Env, Store, emptyEnv, emptyStore, def)
+>        (SValue(Builtin, CallCC), emptyEnv, emptyStore, def)
 > import Hiss.Read (datum)
 > import Hiss.Analyze (analyze)
 > import Hiss.Interpret (interpret)
@@ -17,11 +17,13 @@
 >          case parse datum "hiss" expr of
 >            Left err -> putStrLn $ show err
 >            Right val -> let (e, s) = initEnvStore in
->                           putStrLn $ show $ interpret e s $ analyze val
+>                           show <$> interpret e s (analyze val) >>= putStrLn
 >     where initEnvStore = foldl' step (emptyEnv, emptyStore)
 >                                 [("+", Builtin Builtins.add),
 >                                  ("-", Builtin Builtins.sub),
 >                                  ("*", Builtin Builtins.mul),
 >                                  ("<", Builtin Builtins.lt),
+>                                  ("write", Builtin Builtins.write),
+>                                  ("define", Builtin Builtins.defglobal),
 >                                  ("call/cc", CallCC)]
 >           step (e, s) (n, v) = def e s n v
