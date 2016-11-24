@@ -1,14 +1,20 @@
 > module Hiss.Data where
-> import Control.Monad.Except (ExceptT)
+> import Control.Monad.Except (ExceptT, throwError, liftIO)
 > import Control.Monad.State (StateT)
 > import qualified Data.Map.Strict as Map
 > import Data.Array
 > import System.IO (Handle)
+> import qualified Data.HashTable.IO as H
 
-> type EvalState t = StateT (Env, Store) (ExceptT SError IO) t
+> type EvalState t = StateT (Toplevel, Store) (ExceptT SError IO) t
+
+> liftThrows :: Either SError t -> EvalState t
+> liftThrows (Left e) = throwError e
+> liftThrows (Right v) = return v
 
 = Value Representation
 
+> type PureBuiltinImpl = [SValue] -> Either SError [SValue]
 > type BuiltinImpl = [SValue] -> EvalState [SValue]
 
 > data SValue = Symbol String
@@ -16,6 +22,7 @@
 >             | Fixnum Int
 >             | Pair SValue SValue
 >             | Closure [String] (Maybe String) AST Env
+>             | PureBuiltin PureBuiltinImpl
 >             | Builtin BuiltinImpl
 >             | Port Handle
 >             | Nil
@@ -37,6 +44,7 @@
 >             showElems y = " . " ++ show y ++ ")"
 >   show (Closure _ _ _ _) = "#<lambda>"
 >   show (Builtin _) = "#<lambda>"
+>   show (PureBuiltin _) = "#<lambda>"
 >   show (Port _) = "#<port>"
 >   show Nil = "()"
 >   show (Continuation _) = "#<lambda>"
@@ -77,9 +85,33 @@
 
 > type Address = Int
 > type Env = Map.Map String Address
+> type Toplevel = H.BasicHashTable String SValue
 
 > emptyEnv :: Env
 > emptyEnv = Map.empty
+
+> lookup :: String -> Env -> Either SError Address
+> lookup name e = case Map.lookup name e of
+>                   Just a -> Right a
+>                   Nothing -> Left $ Nonbound name
+
+> insert :: String -> Address -> Env -> Env
+> insert = Map.insert
+
+> toplevelFromList :: [(String, SValue)] -> IO Toplevel
+> toplevelFromList = H.fromList
+
+> lookupGlobal :: String -> Toplevel -> ExceptT SError IO SValue
+> lookupGlobal name eg = do ov <- liftIO $ H.lookup eg name
+>                           case ov of
+>                             Just v -> return v
+>                             Nothing -> throwError $ Nonbound name
+
+> setGlobal :: String -> SValue -> Toplevel -> ExceptT SError IO ()
+> setGlobal name v eg = do ov <- liftIO $ H.lookup eg name
+>                          case ov of
+>                            Just _ -> liftIO $ H.insert eg name v
+>                            Nothing -> throwError $ Nonbound name
 
 = Store
 
@@ -98,7 +130,7 @@
 > set a v (Store vs n) = Store (vs // [(a, v)]) n
 
 > def :: Env -> Store -> String -> SValue -> (Env, Store)
-> def e s n v = (Map.insert n a e, s')
+> def e s n v = (insert n a e, s')
 >     where (a, s') = alloc s v
 
 = Errors
@@ -107,4 +139,9 @@
 >             | NonLambda SValue
 >             | Argc
 >             | Type
+>             | NonError
 >               deriving (Show)
+
+> instance Monoid SError where
+>   mempty = NonError
+>   mappend _ e = e

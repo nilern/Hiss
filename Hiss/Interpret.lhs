@@ -1,10 +1,11 @@
 > module Hiss.Interpret where
-> import Control.Monad.Except (runExceptT, throwError)
+> import Prelude hiding (lookup)
+> import Control.Monad.Except (runExceptT, throwError, lift)
 > import Control.Monad.State (evalStateT, get, put)
-> import qualified Data.Map.Strict as Map
+> import Control.Applicative ((<|>))
 > import Hiss.Data
 
-> interpret :: Env -> Store -> AST -> IO (Either SError [SValue])
+> interpret :: Toplevel -> Store -> AST -> IO (Either SError [SValue])
 > interpret e s c = runExceptT $ evalStateT (eval emptyEnv Halt c) (e, s)
 
 > eval :: Env -> Cont -> AST -> EvalState [SValue]
@@ -16,11 +17,9 @@
 > eval e k (Set name c)         = eval e (SetName k e name) c
 > eval e k (Var name)           =
 >     do (eg, s) <- get
->        case Map.lookup name e of
->          Just a -> continue k [deref a s]
->          Nothing -> case Map.lookup name eg of
->                       Just a -> continue k [deref a s]
->                       Nothing -> throwError $ Nonbound name
+>        v <- (flip deref s <$> liftThrows (lookup name e))
+>             <|> lift (lookupGlobal name eg)
+>        continue k [v]
 > eval _ k (Const v)            = continue k [v]
 
 > continue :: Cont -> [SValue] -> EvalState [SValue]
@@ -33,11 +32,10 @@
 > continue (Cond k e conseq _) _           = eval e k conseq
 > continue (SetName k e name) (v:_)        =
 >     do (eg, s) <- get
->        case (Map.lookup name e) of
->          Just a -> put (eg, set a v s) >> continue k [Unspecified]
->          Nothing -> case Map.lookup name eg of
->                       Just a -> put (eg, set a v s) >> continue k [Unspecified]
->                       Nothing -> throwError $ Nonbound name
+>        (do a <- liftThrows (lookup name e)
+>            put (eg, set a v s))
+>          <|> lift (setGlobal name v eg)
+>        continue k [Unspecified]
 > continue (Began k e (stmt:stmts)) _      = eval e (Began k e stmts) stmt
 > continue (Began k _ []) vs               = continue k vs
 > continue Halt vs                         = return vs
@@ -46,25 +44,26 @@
 > apply k (Closure formals restFormal body env) args =
 >     do e <- bindArgs formals restFormal args env
 >        (eval e k body)
-> apply k (Builtin f) args    = f args >>= continue k
-> apply k Apply (f:arglists)  = apply k f $ concatMap ejectList arglists
-> apply _ Apply []            = throwError Argc
-> apply k CallCC [f]          = apply k f [Continuation k]
-> apply _ CallCC _            = throwError Argc
-> apply k CallVs [prod, cons] = apply (AppVs k cons) prod []
-> apply _ CallVs _            = throwError Argc
-> apply _ (Continuation k) vs = continue k vs
-> apply _ v _                 = throwError $ NonLambda v
+> apply k (PureBuiltin f) args = liftThrows (f args) >>= continue k
+> apply k (Builtin f) args     = f args >>= continue k
+> apply k Apply (f:arglists)   = apply k f $ concatMap ejectList arglists
+> apply _ Apply []             = throwError Argc
+> apply k CallCC [f]           = apply k f [Continuation k]
+> apply _ CallCC _             = throwError Argc
+> apply k CallVs [prod, cons]  = apply (AppVs k cons) prod []
+> apply _ CallVs _             = throwError Argc
+> apply _ (Continuation k) vs  = continue k vs
+> apply _ v _                  = throwError $ NonLambda v
 
 > bindArgs :: [String] -> Maybe String -> [SValue] -> Env -> EvalState Env
 > bindArgs (f:fs) rf (arg:args) e =
 >     do (eg, s) <- get
 >        let (a, s') = alloc s arg
 >        put (eg, s')
->        bindArgs fs rf args (Map.insert f a e)
+>        bindArgs fs rf args (insert f a e)
 > bindArgs [] (Just rf) args e = do (eg, s) <- get
 >                                   let (a, s') = alloc s $ injectList args
 >                                   put (eg, s')
->                                   return (Map.insert rf a e)
+>                                   return (insert rf a e)
 > bindArgs [] Nothing [] e     = return e
 > bindArgs _ _ _ _             = throwError Argc
