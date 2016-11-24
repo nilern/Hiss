@@ -14,9 +14,10 @@ A partial implementation of R7RS Scheme in Haskell.
     - [x] builtins
     - [x] closures
     - [x] continuations
+- [x] `apply`
 - [x] `call/cc`
 - [ ] primitives facility (e.g. `##sys#car`)
-- [ ] multiple values (`values` and `call-with-values`)
+- [x] multiple values (`values` and `call-with-values`)
 - [ ] `dynamic-wind`
 - [ ] `define-record-type`
 - [ ] exceptions

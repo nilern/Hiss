@@ -9,7 +9,7 @@
 
 = Value Representation
 
-> type BuiltinImpl = [SValue] -> EvalState SValue
+> type BuiltinImpl = [SValue] -> EvalState [SValue]
 
 > data SValue = Symbol String
 >             | Bool Bool
@@ -21,6 +21,8 @@
 >             | Nil
 >             | Continuation Cont
 >             | CallCC
+>             | CallVs
+>             | Apply
 >             | Unspecified
 >             | Unbound
 
@@ -39,6 +41,8 @@
 >   show Nil = "()"
 >   show (Continuation _) = "#<lambda>"
 >   show CallCC = "#<lambda>"
+>   show CallVs = "#<lambda>"
+>   show Apply = "#<lambda>"
 >   show Unspecified = "#<unspecified>"
 >   show Unbound = "#<unbound>"
 
@@ -63,6 +67,7 @@
 
 > data Cont = Fn Cont Env [AST]
 >           | Arg Cont Env SValue [SValue] [AST]
+>           | AppVs Cont SValue
 >           | Cond Cont Env AST AST
 >           | SetName Cont Env String
 >           | Began Cont Env [AST]
