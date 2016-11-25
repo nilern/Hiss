@@ -29,6 +29,7 @@
 >             | Continuation Cont
 >             | CallCC
 >             | CallVs
+>             | Values
 >             | Apply
 >             | Unspecified
 >             | Unbound
@@ -50,6 +51,7 @@
 >   show (Continuation _) = "#<lambda>"
 >   show CallCC = "#<lambda>"
 >   show CallVs = "#<lambda>"
+>   show Values = "#<lambda>"
 >   show Apply = "#<lambda>"
 >   show Unspecified = "#<unspecified>"
 >   show Unbound = "#<unbound>"

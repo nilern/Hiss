@@ -52,6 +52,7 @@
 > apply _ CallCC _             = throwError Argc
 > apply k CallVs [prod, cons]  = apply (AppVs k cons) prod []
 > apply _ CallVs _             = throwError Argc
+> apply k Values vs            = continue k vs
 > apply _ (Continuation k) vs  = continue k vs
 > apply _ v _                  = throwError $ NonLambda v
 
