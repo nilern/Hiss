@@ -20,6 +20,8 @@
 >               (Pair (Symbol name)
 >                     (Pair v Nil))) = Set name (analyze v)
 > analyze (Pair (Symbol "begin") stmts) = Begin $ map analyze $ ejectList stmts
+> analyze (Pair (Symbol "quote")
+>               (Pair datum Nil)) = Const datum
 > analyze (Pair callee args) =
 >     Call (analyze callee) $ map analyze $ ejectList args
 > analyze (Symbol s) = Var s

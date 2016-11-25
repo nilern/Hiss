@@ -5,7 +5,7 @@ A partial implementation of R7RS Scheme in Haskell.
 ## TODO
 
 - [x] constants
-    - [ ] `quote`
+    - [x] `quote`
 - [x] variables
 - [x] `set!`
 - [x] `if`

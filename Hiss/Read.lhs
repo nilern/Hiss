@@ -79,7 +79,12 @@
 >               <|> Symbol <$> identifier
 
 > compoundDatum :: Parser SValue
-> compoundDatum = parseList
+> compoundDatum = parseList <|> abbreviation
+
+> abbreviation :: Parser SValue
+> abbreviation = do char '\''
+>                   d <- datum
+>                   return $ Pair (Symbol "quote") (Pair d Nil)
 
 > datum :: Parser SValue
 > datum = between spaces spaces (simpleDatum <|> compoundDatum)
