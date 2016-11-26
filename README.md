@@ -2,35 +2,12 @@
 
 A partial implementation of R7RS Scheme in Haskell.
 
-## TODO
+## Goals
 
-- [x] constants
-    - [x] `quote`
-- [x] variables
-- [x] `set!`
-- [x] `if`
-- [x] `lambda`
-- [x] calls
-    - [x] builtins
-    - [x] closures
-    - [x] continuations
-- [x] `apply`
-- [x] `call/cc`
-- [x] internals syntax
-    - [x] `##intr#...`
-    - [x] `##sf#...`
-- [x] multiple values (`values` and `call-with-values`)
-- [ ] `dynamic-wind`
-- [ ] `define-record-type`
-- [ ] exceptions
-    - [ ] prompts & delimited continuations?
-- [ ] macros
-    - [ ] syntax objects
-    - [ ] bootstrap expander (in Haskell)
-    - [ ] hygienic expander
-    - [ ] syntax-rules
-    - [ ] libraries
-    - [ ] programs
-- [ ] REPL
-- [ ] derived syntax (`let` etc.)
-- [ ] library procedures and syntax
+1. Learn to bootstrap hygienic macro expansion.
+2. Do something nontrivial with Haskell.
+    * Get to terms with the 'nastier' stuff like monad transformers and IORefs.
+3. See how various unfriendly features like (byte)vectors can be implemented in
+   Haskell.
+4. Keep the code nice and simple.
+    * See what kind of performance that leads to.
