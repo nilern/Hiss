@@ -20,6 +20,7 @@
 > data SValue = Symbol String
 >             | Bool Bool
 >             | Fixnum Int
+>             | String String
 >             | Pair SValue SValue
 >             | Closure [String] (Maybe String) AST Env
 >             | PureBuiltin PureBuiltinImpl
@@ -39,6 +40,7 @@
 >   show (Bool True) = "#t"
 >   show (Bool False) = "#f"
 >   show (Fixnum n) = show n
+>   show (String s) = '"' : s ++ "\""
 >   show (Pair x xs) = '(' : show x ++ showElems xs
 >       where showElems (Pair y ys) = ' ' : show y ++ showElems ys
 >             showElems Nil = ")"

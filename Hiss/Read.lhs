@@ -5,12 +5,13 @@
 = Read
 
 > identifier :: Parser String
-> identifier = do
->                ic <- initial
->                rcs <- many subsequent
->                return $ ic:rcs
->              <|>
->              peculiarIdentifier
+> identifier = standardIdentifier <|> internalIdentifier
+
+> standardIdentifier :: Parser String
+> standardIdentifier = do ic <- initial
+>                         rcs <- many subsequent
+>                         return $ ic:rcs
+>                      <|> peculiarIdentifier
 
 > initial :: Parser Char
 > initial = letter <|> specialInitial
@@ -47,6 +48,13 @@
 >                                       subs <- many subsequent
 >                                       return $ d:dsub:subs
 
+> internalIdentifier :: Parser String
+> internalIdentifier = do start <- string "##"
+>                         ns <- many1 letter
+>                         split <- string "#"
+>                         rest <- standardIdentifier
+>                         return $ start ++ ns ++ split ++ rest
+
 > dotSubsequent :: Parser Char
 > dotSubsequent = signSubsequent <|> char '.'
 
@@ -64,6 +72,10 @@
 >             (char 't' >> optional (string "rue") >> return True)
 >              <|> (char 'f' >> optional (string "alse") >> return False)
 
+> parseString :: Parser String
+> parseString = between (char '"') (char '"') (many stringElement)
+>     where stringElement = noneOf ['"', '\\']
+
 > parseList :: Parser SValue
 > parseList = char '(' >> elems
 >     where elems = (char ')' >> return Nil)
@@ -74,9 +86,10 @@
 >                        return $ Pair x xs
 
 > simpleDatum :: Parser SValue
-> simpleDatum = Bool <$> boolean
+> simpleDatum = Bool <$> try boolean
 >               <|> Fixnum <$> number
 >               <|> Symbol <$> identifier
+>               <|> String <$> parseString
 
 > compoundDatum :: Parser SValue
 > compoundDatum = parseList <|> abbreviation
@@ -86,8 +99,17 @@
 >                   d <- datum
 >                   return $ Pair (Symbol "quote") (Pair d Nil)
 
+> atmosphere :: Parser String
+> atmosphere = (many1 space) <|> comment
+
+> comment :: Parser String
+> comment = do c <- char ';'
+>              cs <- manyTill anyChar $ try $ char '\n'
+>              return $ c:cs
+
 > datum :: Parser SValue
-> datum = between spaces spaces (simpleDatum <|> compoundDatum)
+> datum = between (many atmosphere) (many atmosphere)
+>                 (simpleDatum <|> compoundDatum)
 
 > datums :: Parser [SValue]
 > datums = manyTill datum eof
