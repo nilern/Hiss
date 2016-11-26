@@ -27,6 +27,7 @@
 > defglobal [Symbol name, v] = do (e, _) <- get
 >                                 liftIO $ H.insert e name v
 >                                 return [Unspecified]
+> defglobal [_, _] = throwError Type
 > defglobal _ = throwError Argc
 
 > write :: PrimopImpl

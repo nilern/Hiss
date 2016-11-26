@@ -9,20 +9,20 @@
 > interpret e s c = runExceptT $ evalStateT (eval emptyEnv Halt c) (e, s)
 
 > eval :: Env -> Cont -> AST -> EvalState [SValue]
-> eval e k (Lambda fs rf body)    = continue k [(Closure fs rf body e)]
-> eval e k (Call f args)          = eval e (Fn k e args) f
-> eval e k (Primop op (arg:args)) = eval e (PrimArg k e op [] args) arg
-> eval _ k (Primop op [])         = applyPrimop k op []
-> eval e k (If cond conseq alt)   = eval e (Cond k e conseq alt) cond
-> eval e k (Begin (stmt:stmts))   = eval e (Began k e stmts) stmt
-> eval _ k (Begin [])             = continue k [Unspecified]
-> eval e k (Set name c)           = eval e (SetName k e name) c
-> eval e k (Var name)             =
+> eval e k (Lambda _ fs rf body)    = continue k [(Closure fs rf body e)]
+> eval e k (Call _ f args)          = eval e (Fn k e args) f
+> eval e k (Primop _ op (arg:args)) = eval e (PrimArg k e op [] args) arg
+> eval _ k (Primop _ op [])         = applyPrimop k op []
+> eval e k (If _ cond conseq alt)   = eval e (Cond k e conseq alt) cond
+> eval e k (Begin _ (stmt:stmts))   = eval e (Began k e stmts) stmt
+> eval _ k (Begin _ [])             = continue k [Unspecified]
+> eval e k (Set _ name c)           = eval e (SetName k e name) c
+> eval e k (Var _ name)             =
 >     do (eg, s) <- get
 >        v <- (flip deref s <$> liftThrows (lookup name e))
 >             <|> lift (lookupGlobal name eg)
 >        continue k [v]
-> eval _ k (Const v)              = continue k [v]
+> eval _ k (Const _ v)              = continue k [v]
 
 > continue :: Cont -> [SValue] -> EvalState [SValue]
 > continue (Fn k e (arg:args)) (f:_)       = eval e (Arg k e f [] args) arg

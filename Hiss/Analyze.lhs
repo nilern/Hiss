@@ -1,31 +1,34 @@
 > module Hiss.Analyze where
 > import Data.List (isPrefixOf)
+> import Text.Parsec.Pos (SourcePos)
 > import Hiss.Data
 > import qualified Hiss.Builtins as Builtins
 
 > analyze :: SValue -> AST
-> analyze (Pair (Symbol s) args) | isPrefixOf "##sf#" s =
->     analyzeSf (drop 5 s) (ejectList args)
-> analyze (Pair (Symbol s) args) | isPrefixOf "##intr#" s =
->     Primop (lookupPrimop $ drop 7 s) (map analyze $ ejectList args)
-> analyze (Pair callee args) =
->     Call (analyze callee) (map analyze $ ejectList args)
-> analyze (Symbol s) = Var s
-> analyze v = Const v
+> analyze (Syntax (Pair (Syntax (Symbol s) _ _) args) _ pos)
+>         | isPrefixOf "##sf#" s = analyzeSf (drop 5 s) (ejectList args) pos
+> analyze (Syntax (Pair (Syntax (Symbol s) _ _) args) _ pos)
+>         | isPrefixOf "##intr#" s =
+>     Primop pos (lookupPrimop $ drop 7 s) (map analyze $ ejectList args)
+> analyze (Syntax (Pair callee args) _ pos) =
+>     Call pos (analyze callee) (map analyze $ ejectList args)
+> analyze (Syntax (Symbol s) _ pos) = Var pos s
+> analyze (Syntax v _ pos) = Const pos v
 
-> analyzeSf :: String -> [SValue] -> AST
-> analyzeSf "lambda" [formals, body] = Lambda args restarg $ analyze body
+> analyzeSf :: String -> [SValue] -> SourcePos -> AST
+> analyzeSf "lambda" [(Syntax formals _ _), body] pos =
+>     Lambda pos args restarg $ analyze body
 >     where (args, restarg) = analyzeFormals formals
->           analyzeFormals (Pair (Symbol f) fs) = (f:fs', rf)
+>           analyzeFormals (Pair (Syntax (Symbol f) _ _) fs) = (f:fs', rf)
 >               where (fs', rf) = analyzeFormals fs
->           analyzeFormals (Symbol rf) = ([], Just rf)
+>           analyzeFormals (Syntax (Symbol rf) _ _) = ([], Just rf)
 >           analyzeFormals Nil = ([], Nothing)
-> analyzeSf "if" [cond, conseq, alt] = If (analyze cond)
->                                         (analyze conseq)
->                                         (analyze alt)
-> analyzeSf "set!" [Symbol name, v] = Set name (analyze v)
-> analyzeSf "begin" stmts = Begin $ map analyze stmts
-> analyzeSf "quote" [datum] = Const datum
+> analyzeSf "if" [cond, conseq, alt] pos = If pos (analyze cond)
+>                                             (analyze conseq)
+>                                             (analyze alt)
+> analyzeSf "set!" [Syntax (Symbol name) _ _, v] pos = Set pos name (analyze v)
+> analyzeSf "begin" stmts pos = Begin pos $ map analyze stmts
+> analyzeSf "quote" [Syntax datum _ pos] _ = Const pos datum
 
 > lookupPrimop :: String -> Primop
 > lookupPrimop "apply"     = Applier Builtins.apply

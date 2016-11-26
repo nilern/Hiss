@@ -20,12 +20,15 @@
 - [ ] `dynamic-wind`
 - [ ] `define-record-type`
 - [ ] exceptions
-    - [ ] prompts & delimited continuations?
+    - [ ] prompts & delimited continuations (?)
 - [ ] macros
-    - [ ] syntax objects
-    - [ ] bootstrap expander (in Haskell)
+    - [x] syntax objects
+    - [ ] unhygienic expander (for bootstrapping)
     - [ ] hygienic expander
-    - [ ] syntax-rules
+        - [ ] metacircular eval
+        - [ ] expand
+    - [ ] `syntax-rules`
+        - [ ] `syntax-case`
     - [ ] libraries
     - [ ] programs
 - [ ] REPL

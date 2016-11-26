@@ -2,9 +2,11 @@
 > import Control.Monad.Except (ExceptT, throwError, liftIO)
 > import Control.Monad.State (StateT)
 > import qualified Data.Map.Strict as Map
+> import qualified Data.Set as Set
 > import Data.Array
 > import System.IO (Handle)
 > import qualified Data.HashTable.IO as H
+> import Text.Parsec.Pos (SourcePos)
 
 > type EvalState t = StateT (Toplevel, Store) (ExceptT SError IO) t
 
@@ -17,6 +19,7 @@
 > type PurePrimopImpl = [SValue] -> Either SError [SValue]
 > type PrimopImpl = [SValue] -> EvalState [SValue]
 > type ApplierImpl = Cont -> [SValue] -> EvalState (Cont, SValue, [SValue])
+> type Context = Map.Map Int (Set.Set SValue)
 
 > data SValue = Symbol String
 >             | String String
@@ -24,6 +27,7 @@
 >             | Bool Bool
 >             | Pair SValue SValue
 >             | Nil
+>             | Syntax SValue Context SourcePos
 >             | Closure [String] (Maybe String) AST Env
 >             | Continuation Cont
 >             | Port Handle
@@ -41,6 +45,7 @@
 >             showElems Nil = ")"
 >             showElems y = " . " ++ show y ++ ")"
 >   show Nil = "()"
+>   show (Syntax _ _ _) = "#<syntax object>"
 >   show (Closure _ _ _ _) = "#<lambda>"
 >   show (Continuation _) = "#<lambda>"
 >   show (Port _) = "#<port>"
@@ -57,14 +62,14 @@
 
 = Abstract Syntax Tree and Continuations
 
-> data AST = Lambda [String] (Maybe String) AST
->          | Call AST [AST]
->          | Primop Primop [AST]
->          | If AST AST AST
->          | Begin [AST]
->          | Set String AST
->          | Var String
->          | Const SValue
+> data AST = Lambda SourcePos [String] (Maybe String) AST
+>          | Call SourcePos AST [AST]
+>          | Primop SourcePos Primop [AST]
+>          | If SourcePos AST AST AST
+>          | Begin SourcePos [AST]
+>          | Set SourcePos String AST
+>          | Var SourcePos String
+>          | Const SourcePos SValue
 
 > data Primop = Pure PurePrimopImpl
 >             | Impure PrimopImpl

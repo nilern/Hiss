@@ -95,9 +95,11 @@
 > compoundDatum = parseList <|> abbreviation
 
 > abbreviation :: Parser SValue
-> abbreviation = do _ <- char '\''
+> abbreviation = do pos <- getPosition
+>                   _ <- char '\''
 >                   d <- datum
->                   return $ Pair (Symbol "##sf#quote") (Pair d Nil)
+>                   return $ Pair (Syntax (Symbol "##sf#quote") mempty pos)
+>                                 (Pair d Nil)
 
 > atmosphere :: Parser String
 > atmosphere = (many1 space) <|> comment
@@ -108,8 +110,12 @@
 >              return $ c:cs
 
 > datum :: Parser SValue
-> datum = between (many atmosphere) (many atmosphere)
->                 (simpleDatum <|> compoundDatum)
+> datum = between (many atmosphere) (many atmosphere) solid
+>     where solid = do pos <- getPosition
+>                      content <- simpleDatum <|> compoundDatum
+>                      return $ Syntax content mempty pos
 
-> datums :: Parser [SValue]
-> datums = manyTill datum eof
+> datums :: Parser SValue
+> datums = do pos <- getPosition
+>             ds <- manyTill datum eof
+>             return $ Syntax (injectList ds) mempty pos

@@ -1,6 +1,7 @@
 > import Text.ParserCombinators.Parsec (parse)
 > import System.Environment (getArgs)
-> import Hiss.Data (SValue(Symbol), toplevelFromList, emptyStore, injectList)
+> import Hiss.Data (SValue(Symbol, Pair, Syntax),
+>                   toplevelFromList, emptyStore, injectList)
 > import Hiss.Read (datums)
 > import Hiss.Analyze (analyze)
 > import Hiss.Interpret (interpret)
@@ -14,7 +15,10 @@
 >          case parse datums "hiss" expr of
 >            Left err -> putStrLn $ show err
 >            Right vals -> do eg <- initToplevel
->                             evalPrint eg emptyStore
->                               $ injectList (Symbol "##sf#begin" : vals)
+>                             evalPrint eg emptyStore $ blockify vals
 >     where initToplevel = toplevelFromList []
->           evalPrint e s val = show <$> interpret e s (analyze val) >>= putStrLn
+>           blockify (Syntax exprs ctx pos) =
+>               Syntax (Pair (Syntax (Symbol "##sf#begin") ctx pos)
+>                            exprs) ctx pos
+>           evalPrint e s val = show <$> ast >>= putStrLn
+>               where ast = interpret e s $ analyze val
