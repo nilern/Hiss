@@ -16,9 +16,9 @@ A partial implementation of R7RS Scheme in Haskell.
     - [x] continuations
 - [x] `apply`
 - [x] `call/cc`
-- [ ] internals syntax
+- [x] internals syntax
     - [x] `##intr#...`
-    - [ ] `##sf#...`
+    - [x] `##sf#...`
 - [x] multiple values (`values` and `call-with-values`)
 - [ ] `dynamic-wind`
 - [ ] `define-record-type`

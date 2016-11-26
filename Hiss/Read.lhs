@@ -97,7 +97,7 @@
 > abbreviation :: Parser SValue
 > abbreviation = do _ <- char '\''
 >                   d <- datum
->                   return $ Pair (Symbol "quote") (Pair d Nil)
+>                   return $ Pair (Symbol "##sf#quote") (Pair d Nil)
 
 > atmosphere :: Parser String
 > atmosphere = (many1 space) <|> comment

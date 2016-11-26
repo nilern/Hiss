@@ -15,7 +15,8 @@
 >          case parse datums "hiss" expr of
 >            Left err -> putStrLn $ show err
 >            Right vals -> do eg <- initToplevel
->                             evalPrint eg emptyStore $ injectList (Symbol "begin" : vals)
+>                             evalPrint eg emptyStore
+>                               $ injectList (Symbol "##sf#begin" : vals)
 >     where initToplevel = toplevelFromList
 >                              [("apply", Apply),
 >                               ("call-with-values", CallVs),
