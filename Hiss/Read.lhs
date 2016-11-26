@@ -95,7 +95,7 @@
 > compoundDatum = parseList <|> abbreviation
 
 > abbreviation :: Parser SValue
-> abbreviation = do char '\''
+> abbreviation = do _ <- char '\''
 >                   d <- datum
 >                   return $ Pair (Symbol "quote") (Pair d Nil)
 

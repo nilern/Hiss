@@ -16,7 +16,9 @@ A partial implementation of R7RS Scheme in Haskell.
     - [x] continuations
 - [x] `apply`
 - [x] `call/cc`
-- [ ] primitives facility (e.g. `##sys#car`)
+- [ ] internals syntax
+    - [x] `##intr#...`
+    - [ ] `##sf#...`
 - [x] multiple values (`values` and `call-with-values`)
 - [ ] `dynamic-wind`
 - [ ] `define-record-type`
@@ -24,6 +26,7 @@ A partial implementation of R7RS Scheme in Haskell.
     - [ ] prompts & delimited continuations?
 - [ ] macros
     - [ ] syntax objects
+    - [ ] bootstrap expander (in Haskell)
     - [ ] hygienic expander
     - [ ] syntax-rules
     - [ ] libraries

@@ -8,29 +8,32 @@
 > import qualified Data.HashTable.IO as H
 > import Hiss.Data
 
-> defglobal :: BuiltinImpl
+> values :: PurePrimopImpl
+> values = return
+
+> defglobal :: PrimopImpl
 > defglobal [Symbol name, v] = do (e, _) <- get
 >                                 liftIO $ H.insert e name v
 >                                 return [Unspecified]
 > defglobal _ = throwError Argc
 
-> write :: BuiltinImpl
+> write :: PrimopImpl
 > write [v] = write [v, Port stdout]
 > write [v, Port port] = liftIO $ hPrint port v >> return [Unspecified]
 > write [_, _] = throwError Type
 > write _ = throwError Argc
 
-> add :: PureBuiltinImpl
+> add :: PurePrimopImpl
 > add vs = flip (:) [] <$> foldM step (Fixnum 0) vs
 >     where step (Fixnum a) (Fixnum b) = return $ Fixnum $ a + b
 >           step _ _ = throwError Type
 
-> mul :: PureBuiltinImpl
+> mul :: PurePrimopImpl
 > mul vs = flip (:) [] <$> foldM step (Fixnum 1) vs
 >     where step (Fixnum a) (Fixnum b) = return $ Fixnum $ a * b
 >           step _ _ = throwError Type
 
-> sub :: PureBuiltinImpl
+> sub :: PurePrimopImpl
 > sub [] = throwError Argc
 > sub [Fixnum n] = return [Fixnum $ - n]
 > sub [_] = throwError Type
@@ -38,7 +41,7 @@
 >     where step (Fixnum a) (Fixnum b) = return $ Fixnum $ a - b
 >           step _ _ = throwError Type
 
-> lt :: PureBuiltinImpl
+> lt :: PurePrimopImpl
 > lt [] = throwError Argc
 > lt [Fixnum _] = return [Bool True]
 > lt [_] = throwError Type

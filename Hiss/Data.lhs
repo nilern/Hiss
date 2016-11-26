@@ -14,49 +14,43 @@
 
 = Value Representation
 
-> type PureBuiltinImpl = [SValue] -> Either SError [SValue]
-> type BuiltinImpl = [SValue] -> EvalState [SValue]
+> type PurePrimopImpl = [SValue] -> Either SError [SValue]
+> type PrimopImpl = [SValue] -> EvalState [SValue]
 
 > data SValue = Symbol String
->             | Bool Bool
->             | Fixnum Int
 >             | String String
+>             | Fixnum Int
+>             | Bool Bool
 >             | Pair SValue SValue
->             | Closure [String] (Maybe String) AST Env
->             | PureBuiltin PureBuiltinImpl
->             | Builtin BuiltinImpl
->             | Port Handle
 >             | Nil
+>             | Closure [String] (Maybe String) AST Env
 >             | Continuation Cont
+>             | Apply
 >             | CallCC
 >             | CallVs
->             | Values
->             | Apply
->             | Unspecified
+>             | Port Handle
 >             | Unbound
+>             | Unspecified
 
 > instance Show SValue where
 >   show (Symbol cs) = cs
+>   show (String s) = '"' : s ++ "\""
+>   show (Fixnum n) = show n
 >   show (Bool True) = "#t"
 >   show (Bool False) = "#f"
->   show (Fixnum n) = show n
->   show (String s) = '"' : s ++ "\""
 >   show (Pair x xs) = '(' : show x ++ showElems xs
 >       where showElems (Pair y ys) = ' ' : show y ++ showElems ys
 >             showElems Nil = ")"
 >             showElems y = " . " ++ show y ++ ")"
->   show (Closure _ _ _ _) = "#<lambda>"
->   show (Builtin _) = "#<lambda>"
->   show (PureBuiltin _) = "#<lambda>"
->   show (Port _) = "#<port>"
 >   show Nil = "()"
+>   show (Closure _ _ _ _) = "#<lambda>"
 >   show (Continuation _) = "#<lambda>"
+>   show Apply = "#<lambda>"
 >   show CallCC = "#<lambda>"
 >   show CallVs = "#<lambda>"
->   show Values = "#<lambda>"
->   show Apply = "#<lambda>"
->   show Unspecified = "#<unspecified>"
+>   show (Port _) = "#<port>"
 >   show Unbound = "#<unbound>"
+>   show Unspecified = "#<unspecified>"
 
 > injectList :: [SValue] -> SValue
 > injectList (v:vs) = Pair v (injectList vs)
@@ -70,19 +64,23 @@
 
 > data AST = Lambda [String] (Maybe String) AST
 >          | Call AST [AST]
+>          | Primop Primop [AST]
 >          | If AST AST AST
 >          | Begin [AST]
 >          | Set String AST
 >          | Var String
 >          | Const SValue
->          deriving (Show)
+
+> data Primop = Pure PurePrimopImpl
+>             | Impure PrimopImpl
 
 > data Cont = Fn Cont Env [AST]
 >           | Arg Cont Env SValue [SValue] [AST]
+>           | PrimArg Cont Env Primop [SValue] [AST]
 >           | AppVs Cont SValue
 >           | Cond Cont Env AST AST
->           | SetName Cont Env String
 >           | Began Cont Env [AST]
+>           | SetName Cont Env String
 >           | Halt
 
 = Environment
