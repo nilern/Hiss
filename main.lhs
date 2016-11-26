@@ -1,7 +1,6 @@
 > import Text.ParserCombinators.Parsec (parse)
 > import System.Environment (getArgs)
-> import Hiss.Data (SValue(Symbol, CallCC, CallVs, Apply),
->                   toplevelFromList, emptyStore, injectList)
+> import Hiss.Data (SValue(Symbol), toplevelFromList, emptyStore, injectList)
 > import Hiss.Read (datums)
 > import Hiss.Analyze (analyze)
 > import Hiss.Interpret (interpret)
@@ -17,8 +16,5 @@
 >            Right vals -> do eg <- initToplevel
 >                             evalPrint eg emptyStore
 >                               $ injectList (Symbol "##sf#begin" : vals)
->     where initToplevel = toplevelFromList
->                              [("apply", Apply),
->                               ("call-with-values", CallVs),
->                               ("call/cc", CallCC)]
+>     where initToplevel = toplevelFromList []
 >           evalPrint e s val = show <$> interpret e s (analyze val) >>= putStrLn

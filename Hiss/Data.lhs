@@ -16,6 +16,7 @@
 
 > type PurePrimopImpl = [SValue] -> Either SError [SValue]
 > type PrimopImpl = [SValue] -> EvalState [SValue]
+> type ApplierImpl = Cont -> [SValue] -> EvalState (Cont, SValue, [SValue])
 
 > data SValue = Symbol String
 >             | String String
@@ -25,9 +26,6 @@
 >             | Nil
 >             | Closure [String] (Maybe String) AST Env
 >             | Continuation Cont
->             | Apply
->             | CallCC
->             | CallVs
 >             | Port Handle
 >             | Unbound
 >             | Unspecified
@@ -45,9 +43,6 @@
 >   show Nil = "()"
 >   show (Closure _ _ _ _) = "#<lambda>"
 >   show (Continuation _) = "#<lambda>"
->   show Apply = "#<lambda>"
->   show CallCC = "#<lambda>"
->   show CallVs = "#<lambda>"
 >   show (Port _) = "#<port>"
 >   show Unbound = "#<unbound>"
 >   show Unspecified = "#<unspecified>"
@@ -73,6 +68,7 @@
 
 > data Primop = Pure PurePrimopImpl
 >             | Impure PrimopImpl
+>             | Applier ApplierImpl
 
 > data Cont = Fn Cont Env [AST]
 >           | Arg Cont Env SValue [SValue] [AST]

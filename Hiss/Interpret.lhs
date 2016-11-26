@@ -12,7 +12,7 @@
 > eval e k (Lambda fs rf body)    = continue k [(Closure fs rf body e)]
 > eval e k (Call f args)          = eval e (Fn k e args) f
 > eval e k (Primop op (arg:args)) = eval e (PrimArg k e op [] args) arg
-> eval _ k (Primop op [])         = applyPrimop op [] >>= continue k
+> eval _ k (Primop op [])         = applyPrimop k op []
 > eval e k (If cond conseq alt)   = eval e (Cond k e conseq alt) cond
 > eval e k (Begin (stmt:stmts))   = eval e (Began k e stmts) stmt
 > eval _ k (Begin [])             = continue k [Unspecified]
@@ -31,8 +31,7 @@
 > continue (Arg k _ f as []) (a:_)         = apply k f (reverse (a:as))
 > continue (PrimArg k e op as (fm:fms)) (a:_) =
 >     eval e (PrimArg k e op (a:as) fms) fm
-> continue (PrimArg k _ op as []) (a:_)    =
->     applyPrimop op (reverse (a:as)) >>= continue k
+> continue (PrimArg k _ op as []) (a:_)    = applyPrimop k op (reverse (a:as))
 > continue (AppVs k f) vs                  = apply k f vs
 > continue (Cond k e _ alt) (Bool False:_) = eval e k alt
 > continue (Cond k e conseq _) _           = eval e k conseq
@@ -51,17 +50,13 @@
 >     do e <- bindArgs formals restFormal args env
 >        (eval e k body)
 > apply _ (Continuation k) vs  = continue k vs
-> apply k Apply (f:arglists)   = apply k f $ concatMap ejectList arglists
-> apply k CallCC [f]           = apply k f [Continuation k]
-> apply k CallVs [prod, cons]  = apply (AppVs k cons) prod []
-> apply _ Apply _              = throwError Argc
-> apply _ CallCC _             = throwError Argc
-> apply _ CallVs _             = throwError Argc
 > apply _ v _                  = throwError $ NonLambda v
 
-> applyPrimop :: Primop -> [SValue] -> EvalState [SValue]
-> applyPrimop (Pure op) args = liftThrows $ op args
-> applyPrimop (Impure op) args = op args
+> applyPrimop :: Cont -> Primop -> [SValue] -> EvalState [SValue]
+> applyPrimop k (Pure op) args = liftThrows (op args) >>= continue k
+> applyPrimop k (Impure op) args = op args >>= continue k
+> applyPrimop k (Applier op) args = do (k', f, args') <- op k args
+>                                      apply k' f args'
 
 > bindArgs :: [String] -> Maybe String -> [SValue] -> Env -> EvalState Env
 > bindArgs (f:fs) rf (arg:args) e =

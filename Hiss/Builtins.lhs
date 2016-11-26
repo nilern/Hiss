@@ -8,6 +8,18 @@
 > import qualified Data.HashTable.IO as H
 > import Hiss.Data
 
+> apply :: ApplierImpl
+> apply k (f:args) = return (k, f, concatMap ejectList args)
+> apply _ _ = throwError Argc
+
+> callCC :: ApplierImpl
+> callCC k [f] = return (k, f, [Continuation k])
+> callCC _ _ = throwError Argc
+
+> callVs :: ApplierImpl
+> callVs k [prod, cons] = return (AppVs k cons, prod, [])
+> callVs _ _ = throwError Argc
+
 > values :: PurePrimopImpl
 > values = return
 

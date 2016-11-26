@@ -14,6 +14,7 @@
 - [x] `call/cc`
 - [x] internals syntax a la Chicken and Gambit
     - [x] `##intr#...`
+        - [x] `apply`, `call/cc` and `call-with-values`
     - [x] `##sf#...`
 - [x] multiple values (`values` and `call-with-values`)
 - [ ] `dynamic-wind`

@@ -16,8 +16,8 @@
 > analyzeSf :: String -> [SValue] -> AST
 > analyzeSf "lambda" [formals, body] = Lambda args restarg $ analyze body
 >     where (args, restarg) = analyzeFormals formals
->           analyzeFormals (Pair (Symbol f) fs) = (f:formals, restFormal)
->               where (formals, restFormal) = analyzeFormals fs
+>           analyzeFormals (Pair (Symbol f) fs) = (f:fs', rf)
+>               where (fs', rf) = analyzeFormals fs
 >           analyzeFormals (Symbol rf) = ([], Just rf)
 >           analyzeFormals Nil = ([], Nothing)
 > analyzeSf "if" [cond, conseq, alt] = If (analyze cond)
@@ -28,6 +28,9 @@
 > analyzeSf "quote" [datum] = Const datum
 
 > lookupPrimop :: String -> Primop
+> lookupPrimop "apply"     = Applier Builtins.apply
+> lookupPrimop "call/cc"   = Applier Builtins.callCC
+> lookupPrimop "call/vs"   = Applier Builtins.callVs
 > lookupPrimop "values"    = Pure Builtins.values
 > lookupPrimop "defglobal" = Impure Builtins.defglobal
 > lookupPrimop "write"     = Impure Builtins.write
