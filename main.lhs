@@ -18,7 +18,7 @@
 >                             evalPrint eg emptyStore $ blockify vals
 >     where initToplevel = toplevelFromList []
 >           blockify (Syntax exprs ctx pos) =
->               Syntax (Pair (Syntax (Symbol "##sf#begin") ctx pos)
+>               Syntax (Pair (Syntax (Symbol "begin") ctx pos)
 >                            exprs) ctx pos
 >           evalPrint e s val = show <$> ast >>= putStrLn
 >               where ast = interpret e s $ analyze val

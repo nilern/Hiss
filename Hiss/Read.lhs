@@ -98,7 +98,7 @@
 > abbreviation = do pos <- getPosition
 >                   _ <- char '\''
 >                   d <- datum
->                   return $ Pair (Syntax (Symbol "##sf#quote") mempty pos)
+>                   return $ Pair (Syntax (Symbol "quote") mempty pos)
 >                                 (Pair d Nil)
 
 > atmosphere :: Parser String

@@ -1,12 +1,30 @@
 > {-# LANGUAGE FlexibleContexts #-}
 
-> module Hiss.Builtins where
+> module Hiss.Primops where
 > import Control.Monad (foldM)
 > import Control.Monad.State (get)
 > import Control.Monad.Except (throwError, liftIO)
 > import System.IO (hPrint, stdout)
+> import qualified Data.Map.Strict as Map
 > import qualified Data.HashTable.IO as H
 > import Hiss.Data
+
+> ops :: Map.Map String Primop
+> ops = Map.fromList [("apply", Applier apply),
+>                     ("call/cc", Applier callCC),
+>                     ("call/vs", Applier callVs),
+>                     ("values", Pure values),
+>                     ("defglobal", Impure defglobal),
+>                     ("write", Impure write),
+>                     ("eq?", Pure eq),
+>                     ("add", Pure add),
+>                     ("mul", Pure mul),
+>                     ("sub", Pure sub),
+>                     ("lt", Pure lt),
+>                     ("cons", Pure cons),
+>                     ("pair?", Pure isPair),
+>                     ("car", Pure car),
+>                     ("cdr", Pure cdr)]
 
 > apply :: ApplierImpl
 > apply k (f:args) = return (k, f, concatMap ejectList args)
@@ -36,6 +54,9 @@
 > write [_, _] = throwError Type
 > write _ = throwError Argc
 
+> eq :: PurePrimopImpl
+> eq [Symbol a, Symbol b] = return [Bool (a == b)]
+
 > add :: PurePrimopImpl
 > add vs = flip (:) [] <$> foldM step (Fixnum 0) vs
 >     where step (Fixnum a) (Fixnum b) = return $ Fixnum $ a + b
@@ -61,3 +82,22 @@
 > lt (v:vs) = flip (:) [] . Bool . snd <$> foldM step (v, True) vs
 >     where step (Fixnum a, r) bb@(Fixnum b) = return (bb, r && (a < b))
 >           step _ _ = throwError Type
+
+> isPair :: PurePrimopImpl
+> isPair [Pair _ _] = return [Bool True]
+> isPair [_] = return [Bool False]
+> isPair _ = throwError Argc
+
+> cons :: PurePrimopImpl
+> cons [hd, tl] = return [Pair hd tl]
+> cons _ = throwError Argc
+
+> car :: PurePrimopImpl
+> car [Pair hd _] = return [hd]
+> car [_] = throwError Type
+> car _ = throwError Argc
+
+> cdr :: PurePrimopImpl
+> cdr [Pair _ tl] = return [tl]
+> cdr [_] = throwError Type
+> cdr _ = throwError Argc

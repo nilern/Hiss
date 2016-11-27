@@ -16,6 +16,7 @@
     - [x] `##intr#...`
         - [x] `apply`, `call/cc` and `call-with-values`
     - [x] `##sf#...`
+        - [x] Actually, get rid of this
 - [x] multiple values (`values` and `call-with-values`)
 - [ ] `dynamic-wind`
 - [ ] `define-record-type`
