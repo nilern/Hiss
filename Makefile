@@ -1,5 +1,11 @@
+$BOOTSTRAP = scheme/bootstrap
+
 bin:
 	ghc -o hiss -Wall main.lhs
+
+bootstrap_script: $($BOOTSTRAP)/wrap-intrinsics.scm $($BOOTSTRAP)/cxr.scm \
+                  $($BOOTSTRAP)/list.scm $($BOOTSTRAP)/env.scm
+	cat $^ > __bootstrap.scm
 
 clean:
 	rm *.o *.hi Hiss/*.o Hiss/*.hi
