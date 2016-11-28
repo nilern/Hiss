@@ -13,91 +13,91 @@
 > ops = Map.fromList [("apply", Applier apply),
 >                     ("call/cc", Applier callCC),
 >                     ("call/vs", Applier callVs),
->                     ("values", Pure values),
+>                     ("values", Impure values),
 >                     ("defglobal", Impure defglobal),
 >                     ("write", Impure write),
->                     ("eq?", Pure eq),
->                     ("add", Pure add),
->                     ("mul", Pure mul),
->                     ("sub", Pure sub),
->                     ("lt", Pure lt),
->                     ("cons", Pure cons),
->                     ("pair?", Pure isPair),
->                     ("car", Pure car),
->                     ("cdr", Pure cdr)]
+>                     ("eq?", Impure eq),
+>                     ("add", Impure add),
+>                     ("mul", Impure mul),
+>                     ("sub", Impure sub),
+>                     ("lt", Impure lt),
+>                     ("cons", Impure cons),
+>                     ("pair?", Impure isPair),
+>                     ("car", Impure car),
+>                     ("cdr", Impure cdr)]
 
 > apply :: ApplierImpl
 > apply k (f:args) = return (k, f, concatMap ejectList args)
-> apply _ _ = throwError Argc
+> apply _ _ = Argc <$> getPos >>= throwError
 
 > callCC :: ApplierImpl
 > callCC k [f] = return (k, f, [Continuation k])
-> callCC _ _ = throwError Argc
+> callCC _ _ = Argc <$> getPos >>= throwError
 
 > callVs :: ApplierImpl
-> callVs k [prod, cons] = return (AppVs k cons, prod, [])
-> callVs _ _ = throwError Argc
+> callVs k [prod, use] = return (AppVs (positionOf k) k use, prod, [])
+> callVs _ _ = Argc <$> getPos >>= throwError
 
-> values :: PurePrimopImpl
+> values :: PrimopImpl
 > values = return
 
 > defglobal :: PrimopImpl
-> defglobal [Symbol name, v] = do (e, _) <- get
+> defglobal [Symbol name, v] = do (e, _, _) <- get
 >                                 liftIO $ H.insert e name v
 >                                 return [Unspecified]
-> defglobal [_, _] = throwError Type
-> defglobal _ = throwError Argc
+> defglobal [_, _] = Type <$> getPos >>= throwError
+> defglobal _ = Argc <$> getPos >>= throwError
 
 > write :: PrimopImpl
 > write [v] = write [v, Port stdout]
 > write [v, Port port] = liftIO $ hPrint port v >> return [Unspecified]
-> write [_, _] = throwError Type
-> write _ = throwError Argc
+> write [_, _] = Type <$> getPos >>= throwError
+> write _ = Argc <$> getPos >>= throwError
 
-> eq :: PurePrimopImpl
+> eq :: PrimopImpl
 > eq [Symbol a, Symbol b] = return [Bool (a == b)]
 
-> add :: PurePrimopImpl
+> add :: PrimopImpl
 > add vs = flip (:) [] <$> foldM step (Fixnum 0) vs
 >     where step (Fixnum a) (Fixnum b) = return $ Fixnum $ a + b
->           step _ _ = throwError Type
+>           step _ _ = Type <$> getPos >>= throwError
 
-> mul :: PurePrimopImpl
+> mul :: PrimopImpl
 > mul vs = flip (:) [] <$> foldM step (Fixnum 1) vs
 >     where step (Fixnum a) (Fixnum b) = return $ Fixnum $ a * b
->           step _ _ = throwError Type
+>           step _ _ = Type <$> getPos >>= throwError
 
-> sub :: PurePrimopImpl
-> sub [] = throwError Argc
+> sub :: PrimopImpl
+> sub [] = Argc <$> getPos >>= throwError
 > sub [Fixnum n] = return [Fixnum $ - n]
-> sub [_] = throwError Type
+> sub [_] = Type <$> getPos >>= throwError
 > sub (v:vs) = flip (:) [] <$> foldM step v vs
 >     where step (Fixnum a) (Fixnum b) = return $ Fixnum $ a - b
->           step _ _ = throwError Type
+>           step _ _ = Type <$> getPos >>= throwError
 
-> lt :: PurePrimopImpl
-> lt [] = throwError Argc
+> lt :: PrimopImpl
+> lt [] = Argc <$> getPos >>= throwError
 > lt [Fixnum _] = return [Bool True]
-> lt [_] = throwError Type
+> lt [_] = Type <$> getPos >>= throwError
 > lt (v:vs) = flip (:) [] . Bool . snd <$> foldM step (v, True) vs
 >     where step (Fixnum a, r) bb@(Fixnum b) = return (bb, r && (a < b))
->           step _ _ = throwError Type
+>           step _ _ = Type <$> getPos >>= throwError
 
-> isPair :: PurePrimopImpl
+> isPair :: PrimopImpl
 > isPair [Pair _ _] = return [Bool True]
 > isPair [_] = return [Bool False]
-> isPair _ = throwError Argc
+> isPair _ = Argc <$> getPos >>= throwError
 
-> cons :: PurePrimopImpl
+> cons :: PrimopImpl
 > cons [hd, tl] = return [Pair hd tl]
-> cons _ = throwError Argc
+> cons _ = Argc <$> getPos >>= throwError
 
-> car :: PurePrimopImpl
+> car :: PrimopImpl
 > car [Pair hd _] = return [hd]
-> car [_] = throwError Type
-> car _ = throwError Argc
+> car [_] = Type <$> getPos >>= throwError
+> car _ = Argc <$> getPos >>= throwError
 
-> cdr :: PurePrimopImpl
+> cdr :: PrimopImpl
 > cdr [Pair _ tl] = return [tl]
-> cdr [_] = throwError Type
-> cdr _ = throwError Argc
+> cdr [_] = Type <$> getPos >>= throwError
+> cdr _ = Argc <$> getPos >>= throwError

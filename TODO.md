@@ -18,10 +18,11 @@
     - [x] `##sf#...`
         - [x] Actually, get rid of this
 - [x] multiple values (`values` and `call-with-values`)
-- [ ] `dynamic-wind`
+- [x] improve error handling
 - [ ] `define-record-type`
 - [ ] exceptions
     - [ ] prompts & delimited continuations (?)
+- [ ] `dynamic-wind`
 - [ ] macros
     - [x] syntax objects
     - [ ] unhygienic expander (for bootstrapping)

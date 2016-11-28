@@ -1,22 +1,29 @@
 > module Hiss.Data where
 > import Control.Monad.Except (ExceptT, throwError, liftIO)
-> import Control.Monad.State (StateT)
+> import Control.Monad.State (StateT, get, put)
 > import qualified Data.Map.Strict as Map
 > import qualified Data.Set as Set
 > import Data.Array
 > import System.IO (Handle)
 > import qualified Data.HashTable.IO as H
-> import Text.Parsec.Pos (SourcePos)
+> import Text.Parsec.Pos (SourcePos, initialPos)
 
-> type EvalState t = StateT (Toplevel, Store) (ExceptT SError IO) t
+> type EvalState t = StateT (Toplevel, Store, SourcePos) (ExceptT SError IO) t
 
 > liftThrows :: Either SError t -> EvalState t
 > liftThrows (Left e) = throwError e
 > liftThrows (Right v) = return v
 
+> getPos :: EvalState SourcePos
+> getPos = do (_, _, pos) <- get
+>             return pos
+
+> putPos :: SourcePos -> EvalState ()
+> putPos pos = do (tl, s, _) <- get
+>                 put (tl, s, pos)
+
 = Value Representation
 
-> type PurePrimopImpl = [SValue] -> Either SError [SValue]
 > type PrimopImpl = [SValue] -> EvalState [SValue]
 > type ApplierImpl = Cont -> [SValue] -> EvalState (Cont, SValue, [SValue])
 > type Context = Map.Map Int (Set.Set SValue)
@@ -62,6 +69,9 @@
 
 = Abstract Syntax Tree and Continuations
 
+> class Positioned a where
+>   positionOf :: a -> SourcePos
+
 > data AST = Lambda SourcePos [String] (Maybe String) AST
 >          | Call SourcePos AST [AST]
 >          | Primop SourcePos Primop [AST]
@@ -71,18 +81,37 @@
 >          | Var SourcePos String
 >          | Const SourcePos SValue
 
-> data Primop = Pure PurePrimopImpl
->             | Impure PrimopImpl
+> instance Positioned AST where
+>   positionOf (Lambda pos _ _ _) = pos
+>   positionOf (Call pos _ _) = pos
+>   positionOf (Primop pos _ _) = pos
+>   positionOf (If pos _ _ _) = pos
+>   positionOf (Begin pos _) = pos
+>   positionOf (Set pos _ _) = pos
+>   positionOf (Var pos _) = pos
+>   positionOf (Const pos _) = pos
+
+> data Primop = Impure PrimopImpl
 >             | Applier ApplierImpl
 
-> data Cont = Fn Cont Env [AST]
->           | Arg Cont Env SValue [SValue] [AST]
->           | PrimArg Cont Env Primop [SValue] [AST]
->           | AppVs Cont SValue
->           | Cond Cont Env AST AST
->           | Began Cont Env [AST]
->           | SetName Cont Env String
->           | Halt
+> data Cont = Fn SourcePos Cont Env [AST]
+>           | Arg SourcePos Cont Env SValue [SValue] [AST]
+>           | PrimArg SourcePos Cont Env Primop [SValue] [AST]
+>           | AppVs SourcePos Cont SValue
+>           | Cond SourcePos Cont Env AST AST
+>           | Began SourcePos Cont Env [AST]
+>           | SetName SourcePos Cont Env String
+>           | Halt SourcePos
+
+> instance Positioned Cont where
+>   positionOf (Fn pos _ _ _) = pos
+>   positionOf (Arg pos _ _ _ _ _) = pos
+>   positionOf (PrimArg pos _ _ _ _ _) = pos
+>   positionOf (AppVs pos _ _) = pos
+>   positionOf (Cond pos _ _ _ _) = pos
+>   positionOf (Began pos _ _ _) = pos
+>   positionOf (SetName pos _ _ _) = pos
+>   positionOf (Halt pos) = pos
 
 = Environment
 
@@ -93,10 +122,10 @@
 > emptyEnv :: Env
 > emptyEnv = Map.empty
 
-> lookup :: String -> Env -> Either SError Address
-> lookup name e = case Map.lookup name e of
->                   Just a -> Right a
->                   Nothing -> Left $ Nonbound name
+> lookup :: String -> Env -> SourcePos -> Either SError Address
+> lookup name e pos = case Map.lookup name e of
+>                       Just a -> Right a
+>                       Nothing -> Left $ Nonbound pos name
 
 > insert :: String -> Address -> Env -> Env
 > insert = Map.insert
@@ -104,17 +133,17 @@
 > toplevelFromList :: [(String, SValue)] -> IO Toplevel
 > toplevelFromList = H.fromList
 
-> lookupGlobal :: String -> Toplevel -> ExceptT SError IO SValue
-> lookupGlobal name eg = do ov <- liftIO $ H.lookup eg name
->                           case ov of
->                             Just v -> return v
->                             Nothing -> throwError $ Nonbound name
+> lookupGlobal :: String -> Toplevel -> SourcePos -> ExceptT SError IO SValue
+> lookupGlobal name eg pos = do ov <- liftIO $ H.lookup eg name
+>                               case ov of
+>                                 Just v -> return v
+>                                 Nothing -> throwError $ Nonbound pos name
 
-> setGlobal :: String -> SValue -> Toplevel -> ExceptT SError IO ()
-> setGlobal name v eg = do ov <- liftIO $ H.lookup eg name
->                          case ov of
->                            Just _ -> liftIO $ H.insert eg name v
->                            Nothing -> throwError $ Nonbound name
+> setGlobal :: String -> SValue -> Toplevel -> SourcePos -> ExceptT SError IO ()
+> setGlobal name v eg pos = do ov <- liftIO $ H.lookup eg name
+>                              case ov of
+>                                Just _ -> liftIO $ H.insert eg name v
+>                                Nothing -> throwError $ Nonbound pos name
 
 = Store
 
@@ -138,13 +167,14 @@
 
 = Errors
 
-> data SError = Nonbound String
->             | NonLambda SValue
->             | Argc
->             | Type
->             | NonError
+> data SError = Nonbound SourcePos String
+>             | NonLambda SourcePos SValue
+>             | Argc SourcePos
+>             | Type SourcePos
+>             | NilLiteral SourcePos
+>             | NonError SourcePos
 >               deriving (Show)
 
 > instance Monoid SError where
->   mempty = NonError
+>   mempty = NonError $ initialPos "__no-file__"
 >   mappend _ e = e
