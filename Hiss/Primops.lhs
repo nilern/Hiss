@@ -1,6 +1,8 @@
 > {-# LANGUAGE FlexibleContexts #-}
+> {-# LANGUAGE BangPatterns #-}
 
 > module Hiss.Primops where
+> import System.Mem.StableName
 > import Control.Monad (foldM)
 > import Control.Monad.State (get)
 > import Control.Monad.Except (throwError, liftIO)
@@ -24,7 +26,8 @@
 >                     ("cons", Impure cons),
 >                     ("pair?", Impure isPair),
 >                     ("car", Impure car),
->                     ("cdr", Impure cdr)]
+>                     ("cdr", Impure cdr),
+>                     ("stx-e", Impure syntaxExpr)]
 
 > apply :: ApplierImpl
 > apply k (f:args) = return (k, f, concatMap ejectList args)
@@ -55,7 +58,15 @@
 > write _ = Argc <$> getPos >>= throwError
 
 > eq :: PrimopImpl
-> eq [Symbol a, Symbol b] = return [Bool (a == b)]
+> eq [!a, !b] =
+>     do aName <- liftIO $ makeStableName a
+>        bName <- liftIO $ makeStableName b
+>        if aName == bName
+>        then return [Bool True]
+>        else case (a, b) of
+>             (Symbol acs, Symbol bcs) -> return [Bool (acs == bcs)]
+>             _ -> return [Bool False]
+> eq _ = Argc <$> getPos >>= throwError
 
 > add :: PrimopImpl
 > add vs = flip (:) [] <$> foldM step (Fixnum 0) vs
@@ -101,3 +112,8 @@
 > cdr [Pair _ tl] = return [tl]
 > cdr [_] = Type <$> getPos >>= throwError
 > cdr _ = Argc <$> getPos >>= throwError
+
+> syntaxExpr :: PrimopImpl
+> syntaxExpr [Syntax sexp _ _] = return [sexp]
+> syntaxExpr [_] = Type <$> getPos >>= throwError
+> syntaxExpr _ = Argc <$> getPos >>= throwError

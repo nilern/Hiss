@@ -38,6 +38,12 @@ FIXME: error on non-toplevel `define`
 > analyzeSf "if" [cond, conseq, alt] pos =
 >     Just <$> (If pos <$> analyze cond <*> analyze conseq <*> analyze alt)
 > analyzeSf "if" _ pos = throwError (Argc pos)
+> analyzeSf "define" [Syntax name @ (Symbol _) _ npos, v] pos =
+>     do vast <- analyze v
+>        return $ Just
+>            (Primop pos (Impure Primops.defglobal) [Const npos name, vast])
+> analyzeSf "define" [_, _] pos = throwError (Type pos)
+> analyzeSf "define" _ pos = throwError (Argc pos)
 > analyzeSf "set!" [Syntax (Symbol name) _ _, v] pos =
 >     Just . Set pos name <$> analyze v
 > analyzeSf "set!" [_, _] pos = throwError (Type pos)
@@ -46,10 +52,7 @@ FIXME: error on non-toplevel `define`
 > analyzeSf "quote" [Syntax datum _ pos] _ = return $ Just (Const pos datum)
 > analyzeSf "quote" [_] pos = throwError (Type pos)
 > analyzeSf "quote" _ pos = throwError (Argc pos)
-> analyzeSf "define" [Syntax name @ (Symbol _) _ npos, v] pos =
->     do vast <- analyze v
->        return $ Just
->            (Primop pos (Impure Primops.defglobal) [Const npos name, vast])
-> analyzeSf "define" [_, _] pos = throwError (Type pos)
-> analyzeSf "define" _ pos = throwError (Argc pos)
+> analyzeSf "syntax" [stx @ (Syntax _ _ pos)] _ = return $ Just (Const pos stx)
+> analyzeSf "syntax" [_] pos = throwError (Type pos)
+> analyzeSf "syntax" _ pos = throwError (Argc pos)
 > analyzeSf _ _ _ = return Nothing
