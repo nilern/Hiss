@@ -1,4 +1,8 @@
+> {-# LANGUAGE BangPatterns #-}
+
 > module Hiss.Data where
+> import System.Mem.StableName
+> import System.IO.Unsafe (unsafePerformIO)
 > import Control.Monad.Except (ExceptT, throwError, liftIO)
 > import Control.Monad.State (StateT, get, put)
 > import qualified Data.Map.Strict as Map
@@ -41,6 +45,24 @@
 >             | Unbound
 >             | Unspecified
 
+> instance Eq SValue where
+>   (Symbol a) == (Symbol b) = a == b
+>   (String a) == (String b) = a == b
+>   (Fixnum a) == (Fixnum b) = a == b
+>   (Bool a) == (Bool b) = a == b
+>   (Pair a b) == (Pair c d) = a == c && b == d
+>   Nil == Nil = True
+>   (Syntax a aCtx aPos) == (Syntax b bCtx bPos) =
+>       a == b && aCtx == bCtx && aPos == bPos
+>   (!a @ (Closure _ _ _ _)) == (!b @ (Closure _ _ _ _)) =
+>       unsafePerformIO $ (==) <$> makeStableName a <*> makeStableName b
+>   (!k @ (Continuation _)) == (!l @ (Continuation _)) =
+>       unsafePerformIO $ (==) <$> makeStableName k <*> makeStableName l
+>   (Port h1) == (Port h2) = h1 == h2
+>   Unbound == Unbound = True
+>   Unspecified == Unspecified = True
+>   _ == _ = False
+
 > instance Show SValue where
 >   show (Symbol cs) = cs
 >   show (String s) = '"' : s ++ "\""
@@ -76,6 +98,7 @@
 >          | Call SourcePos AST [AST]
 >          | Primop SourcePos Primop [AST]
 >          | If SourcePos AST AST AST
+>          | Case SourcePos AST [(AST, AST)] (Maybe AST)
 >          | Begin SourcePos [AST]
 >          | Set SourcePos String AST
 >          | Var SourcePos String
@@ -99,6 +122,8 @@
 >           | PrimArg SourcePos Cont Env Primop [SValue] [AST]
 >           | AppVs SourcePos Cont SValue
 >           | Cond SourcePos Cont Env AST AST
+>           | CaseDiscr SourcePos Cont Env [(AST, AST)] (Maybe AST)
+>           | CaseCmp SourcePos Cont Env SValue AST [(AST, AST)] (Maybe AST)
 >           | Began SourcePos Cont Env [AST]
 >           | SetName SourcePos Cont Env String
 >           | Halt SourcePos

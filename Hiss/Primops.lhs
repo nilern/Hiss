@@ -19,6 +19,8 @@
 >                     ("defglobal", Impure defglobal),
 >                     ("write", Impure write),
 >                     ("eq?", Impure eq),
+>                     ("eqv?", Impure eqv),
+>                     ("equal?", Impure equal),
 >                     ("add", Impure add),
 >                     ("mul", Impure mul),
 >                     ("sub", Impure sub),
@@ -64,9 +66,36 @@
 >        if aName == bName
 >        then return [Bool True]
 >        else case (a, b) of
+>             (Bool ab, Bool bb) -> return [Bool (ab == bb)]
 >             (Symbol acs, Symbol bcs) -> return [Bool (acs == bcs)]
+>             (Nil, Nil) -> return [Bool True]
+>             (Unbound, Unbound) -> return [Bool True]
+>             (Unspecified, Unspecified) -> return [Bool True]
 >             _ -> return [Bool False]
 > eq _ = Argc <$> getPos >>= throwError
+
+> eqv :: PrimopImpl
+> eqv [!a, !b] =
+>     do aName <- liftIO $ makeStableName a
+>        bName <- liftIO $ makeStableName b
+>        if aName == bName
+>        then return [Bool True]
+>        else case (a, b) of
+>             (Bool ab, Bool bb) -> return [Bool (ab == bb)]
+>             (Symbol acs, Symbol bcs) -> return [Bool (acs == bcs)]
+>             (Nil, Nil) -> return [Bool True]
+>             (Fixnum n, Fixnum m) -> return [Bool (n == m)]
+>             (Unbound, Unbound) -> return [Bool True]
+>             (Unspecified, Unspecified) -> return [Bool True]
+>             _ -> return [Bool False]
+> eqv _ = Argc <$> getPos >>= throwError
+
+> equal :: PrimopImpl
+> equal [!a, !b] =
+>     do aName <- liftIO $ makeStableName a
+>        bName <- liftIO $ makeStableName b
+>        return [Bool $ aName == bName || a == b]
+> equal _ = Argc <$> getPos >>= throwError
 
 > add :: PrimopImpl
 > add vs = flip (:) [] <$> foldM step (Fixnum 0) vs

@@ -38,6 +38,22 @@ FIXME: error on non-toplevel `define`
 > analyzeSf "if" [cond, conseq, alt] pos =
 >     Just <$> (If pos <$> analyze cond <*> analyze conseq <*> analyze alt)
 > analyzeSf "if" _ pos = throwError (Argc pos)
+> analyzeSf "case" (discr:cases) pos =
+>     do d <- analyze discr
+>        (cs, ec) <- analyzeCases cases
+>        return $ Just $ Case pos d cs ec
+>     where analyzeCases ((Syntax (Pair (Syntax (Pair cond Nil) _ _)
+>                                       (Pair body Nil)) _ _):rcs) =
+>               do c <- analyze cond
+>                  b <- analyze body
+>                  (rcbs, ec) <- analyzeCases rcs
+>                  return ((c, b):rcbs, ec)
+>           analyzeCases [(Syntax (Pair (Syntax (Symbol "else") _ _)
+>                                        (Pair body Nil)) _ _)] =
+>               do b <- analyze body
+>                  return ([], Just b)
+>           analyzeCases [] = return ([], Nothing)
+>           analyzeCases _ = throwError $ Type pos
 > analyzeSf "define" [Syntax name @ (Symbol _) _ npos, v] pos =
 >     do vast <- analyze v
 >        return $ Just

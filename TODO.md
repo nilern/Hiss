@@ -19,6 +19,8 @@
         - [x] Actually, get rid of this
 - [x] multiple values (`values` and `call-with-values`)
 - [x] improve error handling
+- [x] `case`
+    - [x] `eq(v/ual)?`
 - [ ] `define-record-type`
 - [ ] exceptions
     - [ ] prompts & delimited continuations (?)
