@@ -98,7 +98,6 @@
 >          | Call SourcePos AST [AST]
 >          | Primop SourcePos Primop [AST]
 >          | If SourcePos AST AST AST
->          | Case SourcePos AST [(AST, AST)] (Maybe AST)
 >          | Begin SourcePos [AST]
 >          | Set SourcePos String AST
 >          | Var SourcePos String
@@ -122,8 +121,6 @@
 >           | PrimArg SourcePos Cont Env Primop [SValue] [AST]
 >           | AppVs SourcePos Cont SValue
 >           | Cond SourcePos Cont Env AST AST
->           | CaseDiscr SourcePos Cont Env [(AST, AST)] (Maybe AST)
->           | CaseCmp SourcePos Cont Env SValue AST [(AST, AST)] (Maybe AST)
 >           | Began SourcePos Cont Env [AST]
 >           | SetName SourcePos Cont Env String
 >           | Halt SourcePos

@@ -25,8 +25,6 @@
 >              applyPrimop k op []
 >          If pos cond conseq alt ->
 >              eval e (Cond pos k e conseq alt) cond
->          Case pos discr cs ec ->
->              eval e (CaseDiscr pos k e cs ec) discr
 >          Begin pos (stmt:stmts) ->
 >              eval e (Began pos k e stmts) stmt
 >          Begin _ [] ->
@@ -63,21 +61,6 @@
 >              eval e k alt
 >          (Cond _ k e conseq _, _)  ->
 >              eval e k conseq
->          (CaseDiscr pos k e ((c, b):cbs) ec, (v:_)) ->
->              eval e (CaseCmp pos k e v b cbs ec) c
->          (CaseDiscr _ k e [] (Just eb), (_:_)) ->
->              eval e k eb
->          (CaseDiscr _ k _ [] Nothing, (_:_)) ->
->              continue k [Unspecified]
->          (CaseCmp pos k e v b cbs ec, (c:_)) ->
->              do [Bool go] <- Primops.eqv [v, c]
->                 if go
->                 then eval e k b
->                 else case (cbs, ec) of
->                        ((c', b'):cbs', _) ->
->                            eval e (CaseCmp pos k e v b' cbs' ec) c'
->                        ([], Just eb) -> eval e k eb
->                        ([], Nothing) -> continue k [Unspecified]
 >          (SetName pos k e name, v:_) ->
 >              do putPos pos
 >                 (eg, s, _) <- get

@@ -21,6 +21,7 @@
 - [x] improve error handling
 - [x] `case`
     - [x] `eq(v/ual)?`
+    - [x] actually, remove this
 - [ ] `define-record-type`
 - [ ] exceptions
     - [ ] prompts & delimited continuations (?)
