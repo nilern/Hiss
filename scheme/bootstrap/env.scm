@@ -7,7 +7,7 @@
     ((lambda (pair)
        (if pair
          (cdr pair)
-         (error "unbound variable" name)))
+         #f))
      (assq name env))))
 
 (define env-set!
