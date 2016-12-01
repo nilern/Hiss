@@ -41,6 +41,7 @@
 >             | Syntax SValue Context SourcePos
 >             | Closure [String] (Maybe String) AST Env
 >             | Continuation Cont
+>             | Values
 >             | Port Handle
 >             | Unbound
 >             | Unspecified
@@ -58,6 +59,7 @@
 >       unsafePerformIO $ (==) <$> makeStableName a <*> makeStableName b
 >   (!k @ (Continuation _)) == (!l @ (Continuation _)) =
 >       unsafePerformIO $ (==) <$> makeStableName k <*> makeStableName l
+>   Values == Values = True
 >   (Port h1) == (Port h2) = h1 == h2
 >   Unbound == Unbound = True
 >   Unspecified == Unspecified = True
@@ -74,9 +76,10 @@
 >             showElems Nil = ")"
 >             showElems y = " . " ++ show y ++ ")"
 >   show Nil = "()"
->   show (Syntax _ _ _) = "#<syntax object>"
+>   show (Syntax v _ _) = "#<syntax " ++ show v ++ ">"
 >   show (Closure _ _ _ _) = "#<lambda>"
 >   show (Continuation _) = "#<lambda>"
+>   show Values = "#<lambda>"
 >   show (Port _) = "#<port>"
 >   show Unbound = "#<unbound>"
 >   show Unspecified = "#<unspecified>"
@@ -191,8 +194,9 @@
 
 > data SError = Nonbound SourcePos String
 >             | NonLambda SourcePos SValue
->             | Argc SourcePos
+>             | Argc SourcePos String
 >             | Type SourcePos
+>             | Formals SourcePos SValue
 >             | NilLiteral SourcePos
 >             | NonError SourcePos
 >               deriving (Show)

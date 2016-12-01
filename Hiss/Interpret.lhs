@@ -1,7 +1,7 @@
 > module Hiss.Interpret where
 > import Prelude hiding (lookup)
 > import Text.Parsec.Pos (SourcePos)
-> import Control.Monad.Except (runExceptT, throwError, lift)
+> import Control.Monad.Except (runExceptT, throwError, lift, liftIO)
 > import Control.Monad.State (evalStateT, get, put)
 > import Control.Applicative ((<|>))
 > import Hiss.Data
@@ -77,9 +77,10 @@
 
 > apply :: Cont -> SValue -> [SValue] -> EvalState [SValue]
 > apply k (Closure formals restFormal body env) args =
->     do e <- bindArgs formals restFormal args env
+>     do e <- bindArgs formals restFormal args env "user-lambda"
 >        (eval e k body)
 > apply _ (Continuation k) vs = continue k vs
+> apply k Values vs           = continue k vs
 > apply _ v _                 = flip NonLambda v <$> getPos >>= throwError
 
 > applyPrimop :: Cont -> Primop -> [SValue] -> EvalState [SValue]
@@ -87,15 +88,16 @@
 > applyPrimop k (Applier op) args = do (k', f, args') <- op k args
 >                                      apply k' f args'
 
-> bindArgs :: [String] -> Maybe String -> [SValue] -> Env -> EvalState Env
-> bindArgs (f:fs) rf (arg:args) e =
+> bindArgs :: [String] -> Maybe String -> [SValue] -> Env -> String
+>             -> EvalState Env
+> bindArgs (f:fs) rf (arg:args) e name =
 >     do (eg, s, pos) <- get
 >        let (a, s') = alloc s arg
 >        put (eg, s', pos)
->        bindArgs fs rf args (insert f a e)
-> bindArgs [] (Just rf) args e = do (eg, s, pos) <- get
->                                   let (a, s') = alloc s $ injectList args
->                                   put (eg, s', pos)
->                                   return (insert rf a e)
-> bindArgs [] Nothing [] e     = return e
-> bindArgs _ _ _ _             = Argc <$> getPos >>= throwError
+>        bindArgs fs rf args (insert f a e) name
+> bindArgs [] (Just rf) args e name = do (eg, s, pos) <- get
+>                                        let (a, s') = alloc s $ injectList args
+>                                        put (eg, s', pos)
+>                                        return (insert rf a e)
+> bindArgs [] Nothing [] e name = return e
+> bindArgs _ _ _ _ name         = flip Argc name <$> getPos >>= throwError

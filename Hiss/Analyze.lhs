@@ -1,3 +1,5 @@
+> {-# LANGUAGE FlexibleContexts #-}
+
 > module Hiss.Analyze where
 > import Data.List (isPrefixOf)
 > import Data.Maybe (fromJust)
@@ -26,33 +28,36 @@ FIXME: get rid of fromJust
 FIXME: error on non-toplevel `define`
 
 > analyzeSf :: String -> [SValue] -> SourcePos -> Either SError (Maybe AST)
-> analyzeSf "lambda" [(Syntax formals _ _), body] pos =
->     Just . Lambda pos args restarg <$> analyze body
->     where (args, restarg) = analyzeFormals formals
->           analyzeFormals (Pair (Syntax (Symbol f) _ _) fs) = (f:fs', rf)
->               where (fs', rf) = analyzeFormals fs
->           analyzeFormals (Syntax (Symbol rf) _ _) = ([], Just rf)
->           analyzeFormals Nil = ([], Nothing)
+> analyzeSf "lambda" [(Syntax formals _ fpos), body] pos =
+>     do (args, restarg) <- analyzeFormals formals
+>        Just . Lambda pos args restarg <$> analyze body
+>     where analyzeFormals (Pair (Syntax (Symbol f) _ _) fs) =
+>               do (fs', rf) <- analyzeFormals fs
+>                  return (f:fs', rf)
+>           analyzeFormals (Syntax (Symbol rf) _ _) = return ([], Just rf)
+>           analyzeFormals (Symbol rf) = return ([], Just rf) -- HACK
+>           analyzeFormals Nil = return ([], Nothing)
+>           analyzeFormals _ = throwError $ Formals fpos formals
 > analyzeSf "lambda" [_, _] pos = throwError (Type pos)
-> analyzeSf "lambda" _ pos = throwError (Argc pos)
+> analyzeSf "lambda" _ pos = throwError (Argc pos "lambda")
 > analyzeSf "if" [cond, conseq, alt] pos =
 >     Just <$> (If pos <$> analyze cond <*> analyze conseq <*> analyze alt)
-> analyzeSf "if" _ pos = throwError (Argc pos)
+> analyzeSf "if" _ pos = throwError (Argc pos "if")
 > analyzeSf "define" [Syntax name @ (Symbol _) _ npos, v] pos =
 >     do vast <- analyze v
 >        return $ Just
 >            (Primop pos (Impure Primops.defglobal) [Const npos name, vast])
 > analyzeSf "define" [_, _] pos = throwError (Type pos)
-> analyzeSf "define" _ pos = throwError (Argc pos)
+> analyzeSf "define" _ pos = throwError (Argc pos "define")
 > analyzeSf "set!" [Syntax (Symbol name) _ _, v] pos =
 >     Just . Set pos name <$> analyze v
 > analyzeSf "set!" [_, _] pos = throwError (Type pos)
-> analyzeSf "set!" _ pos = throwError (Argc pos)
+> analyzeSf "set!" _ pos = throwError (Argc pos "set!")
 > analyzeSf "begin" stmts pos = Just . Begin pos <$> mapM analyze stmts
 > analyzeSf "quote" [Syntax datum _ pos] _ = return $ Just (Const pos datum)
 > analyzeSf "quote" [_] pos = throwError (Type pos)
-> analyzeSf "quote" _ pos = throwError (Argc pos)
+> analyzeSf "quote" _ pos = throwError (Argc pos "quote")
 > analyzeSf "syntax" [stx @ (Syntax _ _ pos)] _ = return $ Just (Const pos stx)
 > analyzeSf "syntax" [_] pos = throwError (Type pos)
-> analyzeSf "syntax" _ pos = throwError (Argc pos)
+> analyzeSf "syntax" _ pos = throwError (Argc pos "syntax")
 > analyzeSf _ _ _ = return Nothing
