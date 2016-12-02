@@ -194,7 +194,9 @@
 
 > data SError = Nonbound SourcePos String
 >             | NonLambda SourcePos SValue
+>             | NonPrimop SourcePos String
 >             | Argc SourcePos String
+>             | InvalidFormals SourcePos SValue
 >             | Type SourcePos
 >             | Formals SourcePos SValue
 >             | NilLiteral SourcePos
