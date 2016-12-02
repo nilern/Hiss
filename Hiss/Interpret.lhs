@@ -5,7 +5,6 @@
 > import Control.Monad.State (evalStateT, get, put)
 > import Control.Applicative ((<|>))
 > import Hiss.Data
-> import qualified Hiss.Primops as Primops
 
 > interpret :: SourcePos -> Toplevel -> Store -> AST -> IO (Either SError [SValue])
 > interpret pos e s c = runExceptT
@@ -87,6 +86,8 @@
 > applyPrimop k (Impure op) args  = op args >>= continue k
 > applyPrimop k (Applier op) args = do (k', f, args') <- op k args
 >                                      apply k' f args'
+> applyPrimop k (Evaler op) args  = do (c, e) <- op args
+>                                      eval e k c
 
 > bindArgs :: [String] -> Maybe String -> [SValue] -> Env -> String
 >             -> EvalState Env

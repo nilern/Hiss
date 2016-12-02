@@ -11,28 +11,6 @@
 > import qualified Data.HashTable.IO as H
 > import Hiss.Data
 
-> ops :: Map.Map String Primop
-> ops = Map.fromList [("apply", Applier apply),
->                     ("call/cc", Applier callCC),
->                     ("call/vs", Applier callVs),
->                     ("values", Impure values),
->                     ("defglobal", Impure defglobal),
->                     ("write", Impure write),
->                     ("eq?", Impure eq),
->                     ("eqv?", Impure eqv),
->                     ("equal?", Impure equal),
->                     ("add", Impure add),
->                     ("mul", Impure mul),
->                     ("sub", Impure sub),
->                     ("lt", Impure lt),
->                     ("cons", Impure cons),
->                     ("pair?", Impure isPair),
->                     ("car", Impure car),
->                     ("cdr", Impure cdr),
->                     ("null?", Impure isNull),
->                     ("mk-stx", Impure makeSyntax),
->                     ("stx-e", Impure syntaxExpr)]
-
 > apply :: ApplierImpl
 > apply k (f:args) = return (k, f, concatMap ejectList args)
 > apply _ _ = flip Argc "%apply" <$> getPos >>= throwError

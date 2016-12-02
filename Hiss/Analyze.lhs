@@ -7,6 +7,35 @@
 > import Text.Parsec.Pos (SourcePos, initialPos)
 > import Hiss.Data
 > import qualified Hiss.Primops as Primops
+> import qualified Hiss.Interpret as Interpret
+
+> ops :: Map.Map String Primop
+> ops = Map.fromList [("apply", Applier Primops.apply),
+>                     ("call/cc", Applier Primops.callCC),
+>                     ("call/vs", Applier Primops.callVs),
+>                     ("eval", Evaler eval),
+>                     ("values", Impure Primops.values),
+>                     ("defglobal", Impure Primops.defglobal),
+>                     ("write", Impure Primops.write),
+>                     ("eq?", Impure Primops.eq),
+>                     ("eqv?", Impure Primops.eqv),
+>                     ("equal?", Impure Primops.equal),
+>                     ("add", Impure Primops.add),
+>                     ("mul", Impure Primops.mul),
+>                     ("sub", Impure Primops.sub),
+>                     ("lt", Impure Primops.lt),
+>                     ("cons", Impure Primops.cons),
+>                     ("pair?", Impure Primops.isPair),
+>                     ("car", Impure Primops.car),
+>                     ("cdr", Impure Primops.cdr),
+>                     ("null?", Impure Primops.isNull),
+>                     ("mk-stx", Impure Primops.makeSyntax),
+>                     ("stx-e", Impure Primops.syntaxExpr)]
+
+> eval :: EvalerImpl
+> eval [stx] = do ast <- liftThrows $ analyze stx
+>                 return (ast, mempty)
+> eval _ = flip Argc "%eval" <$> getPos >>= throwError
 
 > analyze :: SValue -> Either SError AST
 > analyze (Syntax (Pair (Syntax (Symbol s) _ _) args) _ pos)
@@ -14,7 +43,7 @@
 >         | Left err <- analyzeSf s (ejectList args) pos = throwError err
 > analyze (Syntax (Pair (Syntax (Symbol s) _ _) args) _ pos)
 >         | isPrefixOf "##intr#" s =
->     case Map.lookup opname Primops.ops of
+>     case Map.lookup opname ops of
 >       Just op -> Primop pos op <$> mapM analyze (ejectList args)
 >       Nothing -> throwError $ NonPrimop pos opname
 >     where opname = drop 7 s

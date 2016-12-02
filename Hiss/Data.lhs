@@ -30,6 +30,7 @@
 
 > type PrimopImpl = [SValue] -> EvalState [SValue]
 > type ApplierImpl = Cont -> [SValue] -> EvalState (Cont, SValue, [SValue])
+> type EvalerImpl = [SValue] -> EvalState (AST, Env)
 > type Context = Map.Map Int (Set.Set SValue)
 
 > data SValue = Symbol String
@@ -118,6 +119,7 @@
 
 > data Primop = Impure PrimopImpl
 >             | Applier ApplierImpl
+>             | Evaler EvalerImpl
 
 > data Cont = Fn SourcePos Cont Env [AST]
 >           | Arg SourcePos Cont Env SValue [SValue] [AST]
