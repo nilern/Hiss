@@ -64,25 +64,25 @@ FIXME: error on non-toplevel `define`
 > analyzeSf "lambda" [(Syntax formals _ _), body] pos =
 >     do (args, restarg) <- analyzeFormals formals
 >        Just . Lambda pos args restarg <$> analyze body
-> analyzeSf "lambda" [_, _] pos = throwExc (Type pos)
+> analyzeSf "lambda" [s, _] pos = throwExc (Type pos "syntax" s)
 > analyzeSf "lambda" _ pos = throwExc (Argc pos "lambda")
 > analyzeSf "if" [cond, conseq, alt] pos =
 >     Just <$> (If pos <$> analyze cond <*> analyze conseq <*> analyze alt)
 > analyzeSf "if" _ pos = throwExc (Argc pos "if")
 > analyzeSf "define" [Syntax (Symbol name) _ _, v] pos =
 >     Just . Define pos name <$> analyze v
-> analyzeSf "define" [_, _] pos = throwExc (Type pos)
+> analyzeSf "define" [s, _] pos = throwExc (Type pos "syntax" s)
 > analyzeSf "define" _ pos = throwExc (Argc pos "define")
 > analyzeSf "set!" [Syntax (Symbol name) _ _, v] pos =
 >     Just . Set pos name <$> analyze v
-> analyzeSf "set!" [_, _] pos = throwExc (Type pos)
+> analyzeSf "set!" [s, _] pos = throwExc (Type pos "syntax" s)
 > analyzeSf "set!" _ pos = throwExc (Argc pos "set!")
 > analyzeSf "begin" stmts pos = Just . Begin pos <$> mapM analyze stmts
 > analyzeSf "quote" [Syntax datum _ pos] _ = return $ Just (Const pos datum)
-> analyzeSf "quote" [_] pos = throwExc (Type pos)
+> analyzeSf "quote" [s] pos = throwExc (Type pos "syntax" s)
 > analyzeSf "quote" _ pos = throwExc (Argc pos "quote")
 > analyzeSf "syntax" [stx @ (Syntax _ _ pos)] _ = return $ Just (Const pos stx)
-> analyzeSf "syntax" [_] pos = throwExc (Type pos)
+> analyzeSf "syntax" [s] pos = throwExc (Type pos "syntax" s)
 > analyzeSf "syntax" _ pos = throwExc (Argc pos "syntax")
 > analyzeSf _ _ _ = return Nothing
 

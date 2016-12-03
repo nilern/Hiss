@@ -28,7 +28,8 @@
 > write :: PrimopImpl
 > write [v] = write [v, Port stdout]
 > write [v, Port port] = lift $ hPrint port v >> return [Unspecified]
-> write [_, _] = Type <$> get >>= throwExc
+> write [_, p] = do pos <- get
+>                   throwExc $ Type pos "port" p
 > write _ = flip Argc "%write" <$> get >>= throwExc
 
 > eq :: ExcImpl
@@ -68,28 +69,50 @@
 > add :: ExcImpl
 > add vs = flip (:) [] <$> foldM step (Fixnum 0) vs
 >     where step (Fixnum a) (Fixnum b) = return $ Fixnum $ a + b
->           step _ _ = Type <$> get >>= throwExc
+>           step a (Fixnum _) = do pos <- get
+>                                  throwExc $ Type pos "fixnum" a
+>           step (Fixnum _) b = do pos <- get
+>                                  throwExc $ Type pos "fixnum" b
+>           step a _ = do pos <- get
+>                         throwExc $ Type pos "fixnum" a
 
 > mul :: ExcImpl
 > mul vs = flip (:) [] <$> foldM step (Fixnum 1) vs
 >     where step (Fixnum a) (Fixnum b) = return $ Fixnum $ a * b
->           step _ _ = Type <$> get >>= throwExc
+>           step a (Fixnum _) = do pos <- get
+>                                  throwExc $ Type pos "fixnum" a
+>           step (Fixnum _) b = do pos <- get
+>                                  throwExc $ Type pos "fixnum" b
+>           step a _ = do pos <- get
+>                         throwExc $ Type pos "fixnum" a
 
 > sub :: ExcImpl
 > sub [] = flip Argc "%-" <$> get >>= throwExc
 > sub [Fixnum n] = return [Fixnum $ - n]
-> sub [_] = Type <$> get >>= throwExc
+> sub [n] = do pos <- get
+>              throwExc $ Type pos "fixnum" n
 > sub (v:vs) = flip (:) [] <$> foldM step v vs
 >     where step (Fixnum a) (Fixnum b) = return $ Fixnum $ a - b
->           step _ _ = Type <$> get >>= throwExc
+>           step a (Fixnum _) = do pos <- get
+>                                  throwExc $ Type pos "fixnum" a
+>           step (Fixnum _) b = do pos <- get
+>                                  throwExc $ Type pos "fixnum" b
+>           step a _ = do pos <- get
+>                         throwExc $ Type pos "fixnum" a
 
 > lt :: ExcImpl
 > lt [] = flip Argc "%<" <$> get >>= throwExc
 > lt [Fixnum _] = return [Bool True]
-> lt [_] = Type <$> get >>= throwExc
+> lt [n] = do pos <- get
+>             throwExc $ Type pos "fixnum" n
 > lt (v:vs) = flip (:) [] . Bool . snd <$> foldM step (v, True) vs
 >     where step (Fixnum a, r) bb@(Fixnum b) = return (bb, r && (a < b))
->           step _ _ = Type <$> get >>= throwExc
+>           step (a, _) (Fixnum _) = do pos <- get
+>                                       throwExc $ Type pos "fixnum" a
+>           step (Fixnum _, _) b = do pos <- get
+>                                     throwExc $ Type pos "fixnum" b
+>           step (a, _) _ = do pos <- get
+>                              throwExc $ Type pos "fixnum" a
 
 > isPair :: ExcImpl
 > isPair [Pair _ _] = return [Bool True]
@@ -102,12 +125,14 @@
 
 > car :: ExcImpl
 > car [Pair hd _] = return [hd]
-> car [_] = Type <$> get >>= throwExc
+> car [p] = do pos <- get
+>              throwExc $ Type pos "pair" p
 > car _ = flip Argc "%car" <$> get >>= throwExc
 
 > cdr :: ExcImpl
 > cdr [Pair _ tl] = return [tl]
-> cdr [_] = Type <$> get >>= throwExc
+> cdr [p] = do pos <- get
+>              throwExc $ Type pos "pair" p
 > cdr _ = flip Argc "%cdr" <$> get >>= throwExc
 
 > isNull :: ExcImpl
@@ -117,10 +142,12 @@
 
 > makeSyntax :: ExcImpl
 > makeSyntax [Syntax _ ctx pos, sexp] = return [Syntax sexp ctx pos]
-> makeSyntax [_, _] = Type <$> get >>= throwExc
+> makeSyntax [s, _] = do pos <- get
+>                        throwExc $ Type pos "syntax" s
 > makeSyntax _ = flip Argc "%mk-stx" <$> get >>= throwExc
 
 > syntaxExpr :: ExcImpl
 > syntaxExpr [Syntax sexp _ _] = return [sexp]
-> syntaxExpr [_] = Type <$> get >>= throwExc
+> syntaxExpr [s] = do pos <- get
+>                     throwExc $ Type pos "syntax" s
 > syntaxExpr _ = flip Argc "%stx-e" <$> get >>= throwExc

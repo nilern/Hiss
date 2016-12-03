@@ -202,7 +202,7 @@
 >             | NonPrimop SourcePos String
 >             | Argc SourcePos String
 >             | InvalidFormals SourcePos SValue
->             | Type SourcePos
+>             | Type SourcePos String SValue
 >             | Formals SourcePos SValue
 >             | NilLiteral SourcePos
 >             | NonError SourcePos
