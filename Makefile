@@ -4,7 +4,8 @@ bin:
 	ghc -o hiss -Wall main.lhs
 
 bootstrap_script: $($BOOTSTRAP)/wrap-intrinsics.scm $($BOOTSTRAP)/cxr.scm \
-                  $($BOOTSTRAP)/list.scm $($BOOTSTRAP)/env.scm
+                  $($BOOTSTRAP)/list.scm $($BOOTSTRAP)/env.scm \
+				          $($BOOTSTRAP)/expand.scm
 	cat $^ > __bootstrap.scm
 
 clean:
