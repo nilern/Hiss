@@ -1,16 +1,22 @@
+> {-# LANGUAGE FlexibleContexts #-}
+
 > module Hiss.Interpret where
 > import Prelude hiding (lookup)
+> import Control.Eff hiding (Impure)
+> import Control.Eff.State.Lazy
+> import Control.Eff.Exception
+> import Control.Eff.Lift
+> import Control.Eff.Reader.Lazy
 > import Text.Parsec.Pos (SourcePos)
-> import Control.Monad.Except (runExceptT, throwError, liftIO)
-> import Control.Monad.State (evalStateT, get, put)
-> import Control.Monad.Reader (runReaderT)
 > import Hiss.Data
 
 > interpret :: SourcePos -> Env -> AST -> IO (Either SError [SValue])
 > interpret pos e c =
->     runExceptT (evalStateT (runReaderT (eval e (Halt pos) c) e) pos)
+>     runLift $ runExc (evalState pos (runReader (eval e (Halt pos) c) e))
 
-> eval :: Env -> Cont -> AST -> EvalState [SValue]
+> eval :: (Member (State SourcePos) r, Member (Reader Env) r,
+>          Member (Exc SError) r, SetMember Lift (Lift IO) r)
+>      => Env -> Cont -> AST -> Eff r [SValue]
 > eval e k c =
 >     do put (positionOf c)
 >        case c of
@@ -38,7 +44,9 @@
 >          Const _ v ->
 >              continue k [v]
 
-> continue :: Cont -> [SValue] -> EvalState [SValue]
+> continue :: (Member (State SourcePos) r, Member (Reader Env) r,
+>              Member (Exc SError) r, SetMember Lift (Lift IO) r)
+>          => Cont -> [SValue] -> Eff r [SValue]
 > continue cont vals =
 >     do put (positionOf cont)
 >        case (cont, vals) of
@@ -71,24 +79,30 @@
 >          (Halt _, vs) ->
 >              return vs
 
-> apply :: Cont -> SValue -> [SValue] -> EvalState [SValue]
+> apply :: (Member (State SourcePos) r, Member (Reader Env) r,
+>           Member (Exc SError) r, SetMember Lift (Lift IO) r)
+>       => Cont -> SValue -> [SValue] -> Eff r [SValue]
 > apply k (Closure formals restFormal body env) args =
 >     do fas <- zipArgs formals restFormal args
->        env' <- liftIO $ pushFrame env fas
+>        env' <- lift $ pushFrame env fas
 >        eval env' k body
 > apply _ (Continuation k) vs = continue k vs
 > apply k Values vs           = continue k vs
-> apply _ v _                 = flip NonLambda v <$> get >>= throwError
+> apply _ v _                 = flip NonLambda v <$> get >>= throwExc
 
-> applyPrimop :: Cont -> Primop -> [SValue] -> EvalState [SValue]
+> applyPrimop :: (Member (State SourcePos) r, Member (Reader Env) r,
+>                 Member (Exc SError) r, SetMember Lift (Lift IO) r)
+>             => Cont -> Primop -> [SValue] -> Eff r [SValue]
 > applyPrimop k (Impure op) args  = op args >>= continue k
 > applyPrimop k (Applier op) args = do (k', f, args') <- op k args
 >                                      apply k' f args'
 > applyPrimop k (Evaler op) args  = do (c, e) <- op args
 >                                      eval e k c
 
-> zipArgs :: [String] -> Maybe String -> [SValue] -> EvalState [(String, SValue)]
+> zipArgs :: (Member (State SourcePos) r, Member (Reader Env) r,
+>             Member (Exc SError) r, SetMember Lift (Lift IO) r)
+>         => [String] -> Maybe String -> [SValue] -> Eff r [(String, SValue)]
 > zipArgs (f:fs) rf (arg:args) = (:) (f, arg) <$> zipArgs fs rf args
 > zipArgs [] (Just rf) args = return [(rf, injectList args)]
 > zipArgs [] Nothing [] = return []
-> zipArgs _ _ _ = flip Argc "user-lambda" <$> get >>= throwError
+> zipArgs _ _ _ = flip Argc "user-lambda" <$> get >>= throwExc

@@ -42,4 +42,6 @@
 - [x] improve error handling
 - [x] CESK -> CEK
 - [x] StateT (Toplevel, Store, SourcePos) -> StateT SourcePos
-- [ ] use Eff
+- [x] use Eff
+- [ ] redundant constraints
+- [ ] incomplete patterns

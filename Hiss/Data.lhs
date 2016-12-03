@@ -1,28 +1,37 @@
-> {-# LANGUAGE BangPatterns #-}
+> {-# LANGUAGE BangPatterns, RankNTypes, FlexibleContexts #-}
 
 > module Hiss.Data where
-> import System.Mem.StableName
+> import Prelude hiding (lookup)
+> import System.IO (Handle)
 > import System.IO.Unsafe (unsafePerformIO)
-> import Control.Monad.Except (ExceptT, throwError, liftIO)
-> import Control.Monad.State (StateT, get)
-> import Control.Monad.Reader (ReaderT)
+> import System.Mem.StableName
+> -- import Control.Monad.Except (ExceptT, throwError, liftIO)
+> -- import Control.Monad.State (StateT, get)
+> -- import Control.Monad.Reader (ReaderT)
+> import Control.Eff
+> import Control.Eff.Exception
+> import Control.Eff.Lift
+> import Control.Eff.State.Lazy
+> import Control.Eff.Reader.Lazy
 > import qualified Data.Map.Strict as Map
 > import qualified Data.Set as Set
-> import System.IO (Handle)
 > import qualified Data.HashTable.IO as H
 > import Text.Parsec.Pos (SourcePos, initialPos)
 
-> type EvalState t = ReaderT Env (StateT SourcePos (ExceptT SError IO)) t
-
-> liftThrows :: Either SError t -> EvalState t
-> liftThrows (Left e) = throwError e
-> liftThrows (Right v) = return v
-
 = Value Representation
 
-> type PrimopImpl = [SValue] -> EvalState [SValue]
-> type ApplierImpl = Cont -> [SValue] -> EvalState (Cont, SValue, [SValue])
-> type EvalerImpl = [SValue] -> EvalState (AST, Env)
+> type PrimopImpl =
+>     forall r . (Member (State SourcePos) r, Member (Exc SError) r,
+>                 SetMember Lift (Lift IO) r)
+>              => [SValue] -> Eff r [SValue]
+> type ApplierImpl =
+>     forall r . (Member (State SourcePos) r, Member (Exc SError) r)
+>              => Cont -> [SValue] -> Eff r (Cont, SValue, [SValue])
+> type EvalerImpl =
+>     forall r . (Member (State SourcePos) r, Member (Reader Env) r,
+>                 Member (Exc SError) r)
+>              => [SValue] -> Eff r (AST, Env)
+
 > type Context = Map.Map Int (Set.Set SValue)
 
 > data SValue = Symbol String
@@ -144,36 +153,42 @@
 > emptyEnv :: IO Env
 > emptyEnv = Global <$> H.new
 
-> lookup :: Env -> String -> EvalState SValue
+> lookup :: (Member (Exc SError) r, Member (State SourcePos) r,
+>            SetMember Lift (Lift IO) r)
+>        => Env -> String -> Eff r SValue
 > lookup (Lexical parent kvs) name =
->     do ov <- liftIO $ H.lookup kvs name
+>     do ov <- lift $ H.lookup kvs name
 >        case ov of
 >          Just v -> return v
->          Nothing -> Hiss.Data.lookup parent name
+>          Nothing -> lookup parent name
 > lookup (Global kvs) name =
->     do ov <- liftIO $ H.lookup kvs name
+>     do ov <- lift $ H.lookup kvs name
 >        case ov of
 >          Just v -> return v
->          Nothing -> flip Nonbound name <$> get >>= throwError
+>          Nothing -> flip Nonbound name <$> get >>= throwExc
 
 > pushFrame :: Env -> [(String, SValue)] -> IO Env
 > pushFrame parent kvs = Lexical parent <$> H.fromList kvs
 
-> define :: Env -> String -> SValue -> EvalState ()
-> define (Lexical _ _) name _ = flip LexicalDefine name <$> get >>= throwError
-> define (Global kvs) name v = liftIO $ H.insert kvs name v
+> define :: (Member (State SourcePos) r, Member (Exc SError) r,
+>            SetMember Lift (Lift IO) r)
+>        => Env -> String -> SValue -> Eff r ()
+> define (Lexical _ _) name _ = flip LexicalDefine name <$> get >>= throwExc
+> define (Global kvs) name v = lift $ H.insert kvs name v
 
-> set :: Env -> String -> SValue -> EvalState ()
+> set :: (Member (State SourcePos) r, Member (Exc SError) r,
+>         SetMember Lift (Lift IO) r)
+>     => Env -> String -> SValue -> Eff r ()
 > set (Lexical parent kvs) name v =
->     do ov <- liftIO $ H.lookup kvs name
+>     do ov <- lift $ H.lookup kvs name
 >        case ov of
->          Just _ -> liftIO $ H.insert kvs name v
+>          Just _ -> lift $ H.insert kvs name v
 >          Nothing -> set parent name v
 > set (Global kvs) name v =
->     do ov <- liftIO $ H.lookup kvs name
+>     do ov <- lift $ H.lookup kvs name
 >        case ov of
->          Just _ -> liftIO $ H.insert kvs name v
->          Nothing -> flip Nonbound name <$> get >>= throwError
+>          Just _ -> lift $ H.insert kvs name v
+>          Nothing -> flip Nonbound name <$> get >>= throwExc
 
 = Errors
 

@@ -1,10 +1,11 @@
 > {-# LANGUAGE FlexibleContexts #-}
 
 > module Hiss.Analyze where
+> import Control.Eff hiding (Impure)
+> import Control.Eff.Exception
+> import Control.Eff.State.Lazy
+> import Control.Eff.Reader.Lazy
 > import Data.List (isPrefixOf)
-> import Control.Monad.Except (throwError)
-> import Control.Monad.State (get)
-> import Control.Monad.Reader (ask)
 > import qualified Data.Map.Strict as Map
 > import Text.Parsec.Pos (SourcePos, initialPos)
 > import Hiss.Data
@@ -34,55 +35,59 @@
 
 > eval :: EvalerImpl
 > eval [stx] = do env <- ask
->                 ast <- liftThrows $ analyze stx
+>                 ast <- analyze stx
 >                 return (ast, env)
-> eval _ = flip Argc "%eval" <$> get >>= throwError
+> eval _ = flip Argc "%eval" <$> get >>= throwExc
 
-> analyze :: SValue -> Either SError AST
-> analyze (Syntax (Pair (Syntax (Symbol s) _ _) args) _ pos)
->         | Right (Just res) <- analyzeSf s (ejectList args) pos = return res
->         | Left err <- analyzeSf s (ejectList args) pos = throwError err
-> analyze (Syntax (Pair (Syntax (Symbol s) _ _) args) _ pos)
->         | isPrefixOf "##intr#" s =
->     case Map.lookup opname ops of
->       Just op -> Primop pos op <$> mapM analyze (ejectList args)
->       Nothing -> throwError $ NonPrimop pos opname
->     where opname = drop 7 s
+> analyze :: (Member (Exc SError) r) => SValue -> Eff r AST
+> analyze (Syntax (Pair callee @ (Syntax (Symbol s) _ _) args) _ pos) =
+>     do oast <- analyzeSf s (ejectList args) pos
+>        case oast of
+>          Just ast -> return ast
+>          Nothing ->
+>              if isPrefixOf "##intr#" s
+>              then let opname = drop 7 s in
+>                   case Map.lookup opname ops of
+>                     Just op -> Primop pos op <$> mapM analyze (ejectList args)
+>                     Nothing -> throwExc $ NonPrimop pos opname
+>              else Call pos <$> (analyze callee) <*> mapM analyze (ejectList args)
 > analyze (Syntax (Pair callee args) _ pos) =
 >     Call pos <$> (analyze callee) <*> mapM analyze (ejectList args)
 > analyze (Syntax (Symbol s) _ pos) = return $ Var pos s
-> analyze (Syntax Nil _ pos) = throwError $ NilLiteral pos
+> analyze (Syntax Nil _ pos) = throwExc $ NilLiteral pos
 > analyze (Syntax v _ pos) = return $ Const pos v
 
 FIXME: error on non-toplevel `define`
 
-> analyzeSf :: String -> [SValue] -> SourcePos -> Either SError (Maybe AST)
+> analyzeSf :: (Member (Exc SError) r)
+>           => String -> [SValue] -> SourcePos -> Eff r (Maybe AST)
 > analyzeSf "lambda" [(Syntax formals _ _), body] pos =
 >     do (args, restarg) <- analyzeFormals formals
 >        Just . Lambda pos args restarg <$> analyze body
-> analyzeSf "lambda" [_, _] pos = throwError (Type pos)
-> analyzeSf "lambda" _ pos = throwError (Argc pos "lambda")
+> analyzeSf "lambda" [_, _] pos = throwExc (Type pos)
+> analyzeSf "lambda" _ pos = throwExc (Argc pos "lambda")
 > analyzeSf "if" [cond, conseq, alt] pos =
 >     Just <$> (If pos <$> analyze cond <*> analyze conseq <*> analyze alt)
-> analyzeSf "if" _ pos = throwError (Argc pos "if")
+> analyzeSf "if" _ pos = throwExc (Argc pos "if")
 > analyzeSf "define" [Syntax (Symbol name) _ _, v] pos =
 >     Just . Define pos name <$> analyze v
-> analyzeSf "define" [_, _] pos = throwError (Type pos)
-> analyzeSf "define" _ pos = throwError (Argc pos "define")
+> analyzeSf "define" [_, _] pos = throwExc (Type pos)
+> analyzeSf "define" _ pos = throwExc (Argc pos "define")
 > analyzeSf "set!" [Syntax (Symbol name) _ _, v] pos =
 >     Just . Set pos name <$> analyze v
-> analyzeSf "set!" [_, _] pos = throwError (Type pos)
-> analyzeSf "set!" _ pos = throwError (Argc pos "set!")
+> analyzeSf "set!" [_, _] pos = throwExc (Type pos)
+> analyzeSf "set!" _ pos = throwExc (Argc pos "set!")
 > analyzeSf "begin" stmts pos = Just . Begin pos <$> mapM analyze stmts
 > analyzeSf "quote" [Syntax datum _ pos] _ = return $ Just (Const pos datum)
-> analyzeSf "quote" [_] pos = throwError (Type pos)
-> analyzeSf "quote" _ pos = throwError (Argc pos "quote")
+> analyzeSf "quote" [_] pos = throwExc (Type pos)
+> analyzeSf "quote" _ pos = throwExc (Argc pos "quote")
 > analyzeSf "syntax" [stx @ (Syntax _ _ pos)] _ = return $ Just (Const pos stx)
-> analyzeSf "syntax" [_] pos = throwError (Type pos)
-> analyzeSf "syntax" _ pos = throwError (Argc pos "syntax")
+> analyzeSf "syntax" [_] pos = throwExc (Type pos)
+> analyzeSf "syntax" _ pos = throwExc (Argc pos "syntax")
 > analyzeSf _ _ _ = return Nothing
 
-> analyzeFormals :: SValue -> Either SError ([String], Maybe String)
+> analyzeFormals :: (Member (Exc SError) r)
+>                => SValue -> Eff r ([String], Maybe String)
 > analyzeFormals (Pair (Syntax (Symbol f) _ _) rfs @ (Pair _ _)) =
 >     do (fs, rf) <- analyzeFormals rfs
 >        return (f:fs, rf)
@@ -93,5 +98,5 @@ FIXME: error on non-toplevel `define`
 > analyzeFormals Nil = return ([], Nothing)
 > analyzeFormals (Symbol rf) = return ([], Just rf)
 > analyzeFormals formals @ (Syntax _ _ pos) =
->     throwError $ InvalidFormals pos formals
-> analyzeFormals formals = throwError $ InvalidFormals (initialPos "???") formals
+>     throwExc $ InvalidFormals pos formals
+> analyzeFormals formals = throwExc $ InvalidFormals (initialPos "???") formals
