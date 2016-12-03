@@ -3,11 +3,12 @@
 > module Hiss.Analyze where
 > import Data.List (isPrefixOf)
 > import Control.Monad.Except (throwError)
+> import Control.Monad.State (get)
+> import Control.Monad.Reader (ask)
 > import qualified Data.Map.Strict as Map
 > import Text.Parsec.Pos (SourcePos, initialPos)
 > import Hiss.Data
 > import qualified Hiss.Primops as Primops
-> import qualified Hiss.Interpret as Interpret
 
 > ops :: Map.Map String Primop
 > ops = Map.fromList [("apply", Applier Primops.apply),
@@ -15,7 +16,6 @@
 >                     ("call/vs", Applier Primops.callVs),
 >                     ("eval", Evaler eval),
 >                     ("values", Impure Primops.values),
->                     ("defglobal", Impure Primops.defglobal),
 >                     ("write", Impure Primops.write),
 >                     ("eq?", Impure Primops.eq),
 >                     ("eqv?", Impure Primops.eqv),
@@ -33,9 +33,10 @@
 >                     ("stx-e", Impure Primops.syntaxExpr)]
 
 > eval :: EvalerImpl
-> eval [stx] = do ast <- liftThrows $ analyze stx
->                 return (ast, mempty)
-> eval _ = flip Argc "%eval" <$> getPos >>= throwError
+> eval [stx] = do env <- ask
+>                 ast <- liftThrows $ analyze stx
+>                 return (ast, env)
+> eval _ = flip Argc "%eval" <$> get >>= throwError
 
 > analyze :: SValue -> Either SError AST
 > analyze (Syntax (Pair (Syntax (Symbol s) _ _) args) _ pos)
@@ -64,10 +65,8 @@ FIXME: error on non-toplevel `define`
 > analyzeSf "if" [cond, conseq, alt] pos =
 >     Just <$> (If pos <$> analyze cond <*> analyze conseq <*> analyze alt)
 > analyzeSf "if" _ pos = throwError (Argc pos "if")
-> analyzeSf "define" [Syntax name @ (Symbol _) _ npos, v] pos =
->     do vast <- analyze v
->        return $ Just
->            (Primop pos (Impure Primops.defglobal) [Const npos name, vast])
+> analyzeSf "define" [Syntax (Symbol name) _ _, v] pos =
+>     Just . Define pos name <$> analyze v
 > analyzeSf "define" [_, _] pos = throwError (Type pos)
 > analyzeSf "define" _ pos = throwError (Argc pos "define")
 > analyzeSf "set!" [Syntax (Symbol name) _ _, v] pos =

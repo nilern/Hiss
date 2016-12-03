@@ -18,7 +18,6 @@
     - [x] `##sf#...`
         - [x] Actually, get rid of this
 - [x] multiple values (`values` and `call-with-values`)
-- [x] improve error handling
 - [x] `case`
     - [x] `eq(v/ual)?`
     - [x] actually, remove this
@@ -39,3 +38,8 @@
 - [ ] REPL
 - [ ] derived syntax (`let` etc.)
 - [ ] library procedures and syntax
+
+- [x] improve error handling
+- [x] CESK -> CEK
+- [x] StateT (Toplevel, Store, SourcePos) -> StateT SourcePos
+- [ ] use Eff

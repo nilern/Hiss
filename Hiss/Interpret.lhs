@@ -1,18 +1,18 @@
 > module Hiss.Interpret where
 > import Prelude hiding (lookup)
 > import Text.Parsec.Pos (SourcePos)
-> import Control.Monad.Except (runExceptT, throwError, lift, liftIO)
+> import Control.Monad.Except (runExceptT, throwError, liftIO)
 > import Control.Monad.State (evalStateT, get, put)
-> import Control.Applicative ((<|>))
+> import Control.Monad.Reader (runReaderT)
 > import Hiss.Data
 
-> interpret :: SourcePos -> Toplevel -> Store -> AST -> IO (Either SError [SValue])
-> interpret pos e s c = runExceptT
->                       $ evalStateT (eval emptyEnv (Halt pos) c) (e, s, pos)
+> interpret :: SourcePos -> Env -> AST -> IO (Either SError [SValue])
+> interpret pos e c =
+>     runExceptT (evalStateT (runReaderT (eval e (Halt pos) c) e) pos)
 
 > eval :: Env -> Cont -> AST -> EvalState [SValue]
 > eval e k c =
->     do putPos (positionOf c)
+>     do put (positionOf c)
 >        case c of
 >          Lambda _ fs rf body ->
 >              continue k [(Closure fs rf body e)]
@@ -28,19 +28,19 @@
 >              eval e (Began pos k e stmts) stmt
 >          Begin _ [] ->
 >              continue k [Unspecified]
+>          Define pos name v ->
+>              eval e (DefineName pos k e name) v
 >          Set pos name v ->
 >              eval e (SetName pos k e name) v
->          Var pos name ->
->              do (eg, s, _) <- get
->                 v <- (flip deref s <$> liftThrows (lookup name e pos))
->                      <|> lift (lookupGlobal name eg pos)
+>          Var _ name ->
+>              do v <- lookup e name
 >                 continue k [v]
 >          Const _ v ->
 >              continue k [v]
 
 > continue :: Cont -> [SValue] -> EvalState [SValue]
 > continue cont vals =
->     do putPos (positionOf cont)
+>     do put (positionOf cont)
 >        case (cont, vals) of
 >          (Fn pos k e (arg:args), f:_) ->
 >              eval e (Arg pos k e f [] args) arg
@@ -60,13 +60,10 @@
 >              eval e k alt
 >          (Cond _ k e conseq _, _)  ->
 >              eval e k conseq
->          (SetName pos k e name, v:_) ->
->              do putPos pos
->                 (eg, s, _) <- get
->                 (do a <- liftThrows (lookup name e pos)
->                     put (eg, set a v s, pos))
->                   <|> lift (setGlobal name v eg pos)
->                 continue k [Unspecified]
+>          (DefineName _ k e name, v:_) ->
+>              define e name v >> continue k [Unspecified]
+>          (SetName _ k e name, v:_) ->
+>              set e name v >> continue k [Unspecified]
 >          (Began pos k e (stmt:stmts), _) ->
 >              eval e (Began pos k e stmts) stmt
 >          (Began _ k _ [], vs) ->
@@ -76,11 +73,12 @@
 
 > apply :: Cont -> SValue -> [SValue] -> EvalState [SValue]
 > apply k (Closure formals restFormal body env) args =
->     do e <- bindArgs formals restFormal args env "user-lambda"
->        (eval e k body)
+>     do fas <- zipArgs formals restFormal args
+>        env' <- liftIO $ pushFrame env fas
+>        eval env' k body
 > apply _ (Continuation k) vs = continue k vs
 > apply k Values vs           = continue k vs
-> apply _ v _                 = flip NonLambda v <$> getPos >>= throwError
+> apply _ v _                 = flip NonLambda v <$> get >>= throwError
 
 > applyPrimop :: Cont -> Primop -> [SValue] -> EvalState [SValue]
 > applyPrimop k (Impure op) args  = op args >>= continue k
@@ -89,16 +87,8 @@
 > applyPrimop k (Evaler op) args  = do (c, e) <- op args
 >                                      eval e k c
 
-> bindArgs :: [String] -> Maybe String -> [SValue] -> Env -> String
->             -> EvalState Env
-> bindArgs (f:fs) rf (arg:args) e name =
->     do (eg, s, pos) <- get
->        let (a, s') = alloc s arg
->        put (eg, s', pos)
->        bindArgs fs rf args (insert f a e) name
-> bindArgs [] (Just rf) args e name = do (eg, s, pos) <- get
->                                        let (a, s') = alloc s $ injectList args
->                                        put (eg, s', pos)
->                                        return (insert rf a e)
-> bindArgs [] Nothing [] e name = return e
-> bindArgs _ _ _ _ name         = flip Argc name <$> getPos >>= throwError
+> zipArgs :: [String] -> Maybe String -> [SValue] -> EvalState [(String, SValue)]
+> zipArgs (f:fs) rf (arg:args) = (:) (f, arg) <$> zipArgs fs rf args
+> zipArgs [] (Just rf) args = return [(rf, injectList args)]
+> zipArgs [] Nothing [] = return []
+> zipArgs _ _ _ = flip Argc "user-lambda" <$> get >>= throwError
