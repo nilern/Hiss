@@ -20,6 +20,9 @@
 
 = Value Representation
 
+> type ExcImpl =
+>     forall r . (Member (Exc SError) r, Member (State SourcePos) r)
+>              => [SValue] -> Eff r [SValue]
 > type PrimopImpl =
 >     forall r . (Member (State SourcePos) r, Member (Exc SError) r,
 >                 SetMember Lift (Lift IO) r)
@@ -120,7 +123,8 @@
 >   positionOf (Var pos _) = pos
 >   positionOf (Const pos _) = pos
 
-> data Primop = Impure PrimopImpl
+> data Primop = Purish ExcImpl
+>             | Impure PrimopImpl
 >             | Applier ApplierImpl
 >             | Evaler EvalerImpl
 

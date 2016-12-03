@@ -43,5 +43,6 @@
 - [x] CESK -> CEK
 - [x] StateT (Toplevel, Store, SourcePos) -> StateT SourcePos
 - [x] use Eff
-- [ ] redundant constraints
+- [x] redundant constraints
 - [ ] incomplete patterns
+- [ ] reallyUnsafePtrEquality#

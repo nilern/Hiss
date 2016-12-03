@@ -93,14 +93,14 @@
 > applyPrimop :: (Member (State SourcePos) r, Member (Reader Env) r,
 >                 Member (Exc SError) r, SetMember Lift (Lift IO) r)
 >             => Cont -> Primop -> [SValue] -> Eff r [SValue]
+> applyPrimop k (Purish op) args  = op args >>= continue k
 > applyPrimop k (Impure op) args  = op args >>= continue k
 > applyPrimop k (Applier op) args = do (k', f, args') <- op k args
 >                                      apply k' f args'
 > applyPrimop k (Evaler op) args  = do (c, e) <- op args
 >                                      eval e k c
 
-> zipArgs :: (Member (State SourcePos) r, Member (Reader Env) r,
->             Member (Exc SError) r, SetMember Lift (Lift IO) r)
+> zipArgs :: (Member (State SourcePos) r, Member (Exc SError) r)
 >         => [String] -> Maybe String -> [SValue] -> Eff r [(String, SValue)]
 > zipArgs (f:fs) rf (arg:args) = (:) (f, arg) <$> zipArgs fs rf args
 > zipArgs [] (Just rf) args = return [(rf, injectList args)]

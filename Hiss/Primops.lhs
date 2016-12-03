@@ -21,7 +21,7 @@
 > callVs k [prod, use] = return (AppVs (positionOf k) k use, prod, [])
 > callVs _ _ = flip Argc "%call/vs" <$> get >>= throwExc
 
-> values :: PrimopImpl
+> values :: ExcImpl
 > values [] = return [Values]
 > values _ = flip Argc "%values" <$> get >>= throwExc
 
@@ -69,17 +69,17 @@
 >        return [Bool $ aName == bName || a == b]
 > equal _ = flip Argc "%equal?" <$> get >>= throwExc
 
-> add :: PrimopImpl
+> add :: ExcImpl
 > add vs = flip (:) [] <$> foldM step (Fixnum 0) vs
 >     where step (Fixnum a) (Fixnum b) = return $ Fixnum $ a + b
 >           step _ _ = Type <$> get >>= throwExc
 
-> mul :: PrimopImpl
+> mul :: ExcImpl
 > mul vs = flip (:) [] <$> foldM step (Fixnum 1) vs
 >     where step (Fixnum a) (Fixnum b) = return $ Fixnum $ a * b
 >           step _ _ = Type <$> get >>= throwExc
 
-> sub :: PrimopImpl
+> sub :: ExcImpl
 > sub [] = flip Argc "%-" <$> get >>= throwExc
 > sub [Fixnum n] = return [Fixnum $ - n]
 > sub [_] = Type <$> get >>= throwExc
@@ -87,7 +87,7 @@
 >     where step (Fixnum a) (Fixnum b) = return $ Fixnum $ a - b
 >           step _ _ = Type <$> get >>= throwExc
 
-> lt :: PrimopImpl
+> lt :: ExcImpl
 > lt [] = flip Argc "%<" <$> get >>= throwExc
 > lt [Fixnum _] = return [Bool True]
 > lt [_] = Type <$> get >>= throwExc
@@ -95,36 +95,36 @@
 >     where step (Fixnum a, r) bb@(Fixnum b) = return (bb, r && (a < b))
 >           step _ _ = Type <$> get >>= throwExc
 
-> isPair :: PrimopImpl
+> isPair :: ExcImpl
 > isPair [Pair _ _] = return [Bool True]
 > isPair [_] = return [Bool False]
 > isPair _ = flip Argc "%pair?" <$> get >>= throwExc
 
-> cons :: PrimopImpl
+> cons :: ExcImpl
 > cons [hd, tl] = return [Pair hd tl]
 > cons _ = flip Argc "%cons" <$> get >>= throwExc
 
-> car :: PrimopImpl
+> car :: ExcImpl
 > car [Pair hd _] = return [hd]
 > car [_] = Type <$> get >>= throwExc
 > car _ = flip Argc "%car" <$> get >>= throwExc
 
-> cdr :: PrimopImpl
+> cdr :: ExcImpl
 > cdr [Pair _ tl] = return [tl]
 > cdr [_] = Type <$> get >>= throwExc
 > cdr _ = flip Argc "%cdr" <$> get >>= throwExc
 
-> isNull :: PrimopImpl
+> isNull :: ExcImpl
 > isNull [Nil] = return [Bool True]
 > isNull [_] = return [Bool False]
 > isNull _ = flip Argc "%null?" <$> get >>= throwExc
 
-> makeSyntax :: PrimopImpl
+> makeSyntax :: ExcImpl
 > makeSyntax [Syntax _ ctx pos, sexp] = return [Syntax sexp ctx pos]
 > makeSyntax [_, _] = Type <$> get >>= throwExc
 > makeSyntax _ = flip Argc "%mk-stx" <$> get >>= throwExc
 
-> syntaxExpr :: PrimopImpl
+> syntaxExpr :: ExcImpl
 > syntaxExpr [Syntax sexp _ _] = return [sexp]
 > syntaxExpr [_] = Type <$> get >>= throwExc
 > syntaxExpr _ = flip Argc "%stx-e" <$> get >>= throwExc
