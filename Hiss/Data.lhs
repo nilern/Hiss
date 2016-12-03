@@ -1,13 +1,9 @@
-> {-# LANGUAGE BangPatterns, RankNTypes, FlexibleContexts #-}
+> {-# LANGUAGE BangPatterns, RankNTypes, FlexibleContexts, MagicHash #-}
 
 > module Hiss.Data where
 > import Prelude hiding (lookup)
 > import System.IO (Handle)
-> import System.IO.Unsafe (unsafePerformIO)
-> import System.Mem.StableName
-> -- import Control.Monad.Except (ExceptT, throwError, liftIO)
-> -- import Control.Monad.State (StateT, get)
-> -- import Control.Monad.Reader (ReaderT)
+> import GHC.Prim (reallyUnsafePtrEquality#)
 > import Control.Eff
 > import Control.Eff.Exception
 > import Control.Eff.Lift
@@ -61,9 +57,13 @@
 >   (Syntax a aCtx aPos) == (Syntax b bCtx bPos) =
 >       a == b && aCtx == bCtx && aPos == bPos
 >   (!a @ (Closure _ _ _ _)) == (!b @ (Closure _ _ _ _)) =
->       unsafePerformIO $ (==) <$> makeStableName a <*> makeStableName b
+>       case reallyUnsafePtrEquality# a b of
+>         1# -> True
+>         _ -> False
 >   (!k @ (Continuation _)) == (!l @ (Continuation _)) =
->       unsafePerformIO $ (==) <$> makeStableName k <*> makeStableName l
+>       case reallyUnsafePtrEquality# k l of
+>         1# -> True
+>         _ -> False
 >   Values == Values = True
 >   (Port h1) == (Port h2) = h1 == h2
 >   Unbound == Unbound = True

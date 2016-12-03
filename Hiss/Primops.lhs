@@ -1,8 +1,8 @@
-> {-# LANGUAGE FlexibleContexts, BangPatterns, GADTs #-}
+> {-# LANGUAGE FlexibleContexts, BangPatterns, GADTs, MagicHash #-}
 
 > module Hiss.Primops where
 > import System.IO (hPrint, stdout)
-> import System.Mem.StableName
+> import GHC.Prim (reallyUnsafePtrEquality#)
 > import Control.Monad (foldM)
 > import Control.Eff.State.Lazy
 > import Control.Eff.Exception
@@ -31,42 +31,38 @@
 > write [_, _] = Type <$> get >>= throwExc
 > write _ = flip Argc "%write" <$> get >>= throwExc
 
-> eq :: PrimopImpl
+> eq :: ExcImpl
 > eq [!a, !b] =
->     do aName <- lift $ makeStableName a
->        bName <- lift $ makeStableName b
->        if aName == bName
->        then return [Bool True]
->        else case (a, b) of
->             (Bool ab, Bool bb) -> return [Bool (ab == bb)]
->             (Symbol acs, Symbol bcs) -> return [Bool (acs == bcs)]
->             (Nil, Nil) -> return [Bool True]
->             (Unbound, Unbound) -> return [Bool True]
->             (Unspecified, Unspecified) -> return [Bool True]
->             _ -> return [Bool False]
+>     case reallyUnsafePtrEquality# a b of
+>       1# -> return [Bool True]
+>       _ -> case (a, b) of
+>              (Bool ab, Bool bb) -> return [Bool (ab == bb)]
+>              (Symbol acs, Symbol bcs) -> return [Bool (acs == bcs)]
+>              (Nil, Nil) -> return [Bool True]
+>              (Unbound, Unbound) -> return [Bool True]
+>              (Unspecified, Unspecified) -> return [Bool True]
+>              _ -> return [Bool False]
 > eq _ = flip Argc "%eq?" <$> get >>= throwExc
 
-> eqv :: PrimopImpl
+> eqv :: ExcImpl
 > eqv [!a, !b] =
->     do aName <- lift $ makeStableName a
->        bName <- lift $ makeStableName b
->        if aName == bName
->        then return [Bool True]
->        else case (a, b) of
->             (Bool ab, Bool bb) -> return [Bool (ab == bb)]
->             (Symbol acs, Symbol bcs) -> return [Bool (acs == bcs)]
->             (Nil, Nil) -> return [Bool True]
->             (Fixnum n, Fixnum m) -> return [Bool (n == m)]
->             (Unbound, Unbound) -> return [Bool True]
->             (Unspecified, Unspecified) -> return [Bool True]
->             _ -> return [Bool False]
+>     case reallyUnsafePtrEquality# a b of
+>       1# -> return [Bool True]
+>       _ -> case (a, b) of
+>              (Bool ab, Bool bb) -> return [Bool (ab == bb)]
+>              (Symbol acs, Symbol bcs) -> return [Bool (acs == bcs)]
+>              (Nil, Nil) -> return [Bool True]
+>              (Fixnum n, Fixnum m) -> return [Bool (n == m)]
+>              (Unbound, Unbound) -> return [Bool True]
+>              (Unspecified, Unspecified) -> return [Bool True]
+>              _ -> return [Bool False]
 > eqv _ = flip Argc "%eqv?" <$> get >>= throwExc
 
-> equal :: PrimopImpl
+> equal :: ExcImpl
 > equal [!a, !b] =
->     do aName <- lift $ makeStableName a
->        bName <- lift $ makeStableName b
->        return [Bool $ aName == bName || a == b]
+>     case reallyUnsafePtrEquality# a b of
+>       1# -> return [Bool True]
+>       _ -> return [Bool $ a == b]
 > equal _ = flip Argc "%equal?" <$> get >>= throwExc
 
 > add :: ExcImpl

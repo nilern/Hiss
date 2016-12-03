@@ -44,5 +44,5 @@
 - [x] StateT (Toplevel, Store, SourcePos) -> StateT SourcePos
 - [x] use Eff
 - [x] redundant constraints
+- [x] reallyUnsafePtrEquality#
 - [ ] incomplete patterns
-- [ ] reallyUnsafePtrEquality#
