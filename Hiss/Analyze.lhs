@@ -1,6 +1,7 @@
 > {-# LANGUAGE FlexibleContexts #-}
 
 > module Hiss.Analyze where
+> import System.IO (IOMode(ReadMode, WriteMode))
 > import Control.Eff hiding (Impure)
 > import Control.Eff.Exception
 > import Control.Eff.State.Lazy
@@ -17,7 +18,12 @@
 >                     ("call/vs", Applier Primops.callVs),
 >                     ("eval", Evaler eval),
 >                     ("values", Purish Primops.values),
+>                     ("read/s-all", Impure Primops.readStringAll),
 >                     ("write", Impure Primops.write),
+>                     ("nl", Impure Primops.nl),
+>                     ("open/if", Impure $ Primops.openFP ReadMode),
+>                     ("open/of", Impure $ Primops.openFP WriteMode),
+>                     ("cline", Impure Primops.cline),
 >                     ("eq?", Purish Primops.eq),
 >                     ("eqv?", Purish Primops.eqv),
 >                     ("equal?", Purish Primops.equal),
@@ -31,7 +37,8 @@
 >                     ("cdr", Purish Primops.cdr),
 >                     ("null?", Purish Primops.isNull),
 >                     ("mk-stx", Purish Primops.makeSyntax),
->                     ("stx-e", Purish Primops.syntaxExpr)]
+>                     ("stx-e", Purish Primops.syntaxExpr),
+>                     ("parse/stx-all", Purish Primops.parseSyntaxAll)]
 
 > eval :: EvalerImpl
 > eval [stx] = do env <- ask

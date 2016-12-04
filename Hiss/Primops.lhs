@@ -1,13 +1,17 @@
-> {-# LANGUAGE FlexibleContexts, BangPatterns, GADTs, MagicHash #-}
+> {-# LANGUAGE FlexibleContexts, BangPatterns, GADTs, RankNTypes, MagicHash #-}
 
 > module Hiss.Primops where
-> import System.IO (hPrint, stdout)
+> import Text.Parsec (parse)
+> import System.IO (hPutStr, hPutStrLn, hGetContents, stdout, openFile,
+>                   IOMode(ReadMode, WriteMode))
+> import System.Environment (getProgName, getArgs)
 > import GHC.Prim (reallyUnsafePtrEquality#)
 > import Control.Monad (foldM)
 > import Control.Eff.State.Lazy
 > import Control.Eff.Exception
 > import Control.Eff.Lift
 > import Hiss.Data
+> import Hiss.Read (datums)
 
 > apply :: ApplierImpl
 > apply k (f:args) = return (k, f, concatMap ejectList args)
@@ -25,12 +29,39 @@
 > values [] = return [Values]
 > values _ = flip Argc "%values" <$> get >>= throwExc
 
+> readStringAll :: PrimopImpl
+> readStringAll [Port port] = flip (:) [] . String <$> lift (hGetContents port)
+> readStringAll [p] = do pos <- get
+>                        throwExc $ Type pos "port" p
+> readStringAll _ = flip Argc "%read/s-all" <$> get >>= throwExc
+
 > write :: PrimopImpl
 > write [v] = write [v, Port stdout]
-> write [v, Port port] = lift $ hPrint port v >> return [Unspecified]
+> write [v, Port port] = lift $ hPutStr port (show v) >> return [Unspecified]
 > write [_, p] = do pos <- get
 >                   throwExc $ Type pos "port" p
 > write _ = flip Argc "%write" <$> get >>= throwExc
+
+> nl :: PrimopImpl
+> nl [] = nl [Port stdout]
+> nl [Port port] = lift $ hPutStrLn port "" >> return [Unspecified]
+> nl [p] = do pos <- get
+>             throwExc $ Type pos "port" p
+> nl _ = flip Argc "%nl" <$> get >>= throwExc
+
+> openFP :: IOMode -> PrimopImpl
+> openFP mode [String filename] = do fh <- lift $ openFile filename mode
+>                                    return [Port fh]
+> openFP _ [p] = do pos <- get
+>                   throwExc $ Type pos "port" p
+> openFP ReadMode _ = flip Argc "%open/if" <$> get >>= throwExc
+> openFP WriteMode _ = flip Argc "%open/of" <$> get >>= throwExc
+
+> cline :: PrimopImpl
+> cline [] = do progName <- lift getProgName
+>               cliArgs <- lift getArgs
+>               return [injectList $ map String $ progName : cliArgs]
+> cline _ = flip Argc "%cline" <$> get >>= throwExc
 
 > eq :: ExcImpl
 > eq [!a, !b] =
@@ -151,3 +182,14 @@
 > syntaxExpr [s] = do pos <- get
 >                     throwExc $ Type pos "syntax" s
 > syntaxExpr _ = flip Argc "%stx-e" <$> get >>= throwExc
+
+> parseSyntaxAll :: ExcImpl
+> parseSyntaxAll [String desc, String s] =
+>     case parse datums desc s of
+>       Right vals -> return [vals]
+>       Left err -> flip ParseError err <$> get >>= throwExc
+> parseSyntaxAll [String _, s] = do pos <- get
+>                                   throwExc $ Type pos "string" s
+> parseSyntaxAll [s, String _] = do pos <- get
+>                                   throwExc $ Type pos "string" s
+> parseSyntaxAll _ = flip Argc "%parse/stx-all" <$> get >>= throwExc

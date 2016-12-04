@@ -12,6 +12,7 @@
 > import qualified Data.Map.Strict as Map
 > import qualified Data.Set as Set
 > import qualified Data.HashTable.IO as H
+> import Text.Parsec (ParseError)
 > import Text.Parsec.Pos (SourcePos, initialPos)
 
 = Value Representation
@@ -206,6 +207,7 @@
 >             | Formals SourcePos SValue
 >             | NilLiteral SourcePos
 >             | NonError SourcePos
+>             | ParseError SourcePos ParseError
 >               deriving (Show)
 
 > instance Monoid SError where

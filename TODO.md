@@ -27,7 +27,7 @@
 - [ ] `dynamic-wind`
 - [ ] macros
     - [x] syntax objects
-    - [ ] unhygienic expander (for bootstrapping)
+    - [x] unhygienic expander (for bootstrapping)
     - [ ] hygienic expander
         - [ ] metacircular eval
         - [ ] expand
@@ -46,3 +46,5 @@
 - [x] redundant constraints
 - [x] reallyUnsafePtrEquality#
 - [ ] incomplete patterns
+- [ ] Data.Text
+- [ ] export lists

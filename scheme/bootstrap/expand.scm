@@ -160,8 +160,3 @@
                        (cons stx* (expand-toplevel* expanders* (cdr stxs))))))))
          (datum->syntax stx (expand-toplevel* expanders (syntax-e stx)))))
      (begin))))
-
-(expand-toplevel (make-env)
-                 (syntax (begin
-                           (define-syntax foo (lambda (_) (syntax 5)))
-                           (foo))))

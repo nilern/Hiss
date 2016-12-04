@@ -2,4 +2,4 @@
 *.o
 *.html
 hiss
-__bootstrap.scm
+__*__.scm
