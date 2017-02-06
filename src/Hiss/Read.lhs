@@ -1,8 +1,12 @@
-> module Hiss.Read where
+
+= Scheme Reader
+
+This is a rather straightforward rendition into Parsec of the grammar found in
+chapter 7 of the R7RS.
+
+> module Hiss.Read (datums) where
 > import Text.ParserCombinators.Parsec
 > import Hiss.Data
-
-= Read
 
 > identifier :: Parser String
 > identifier = standardIdentifier <|> internalIdentifier

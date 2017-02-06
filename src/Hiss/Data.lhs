@@ -1,3 +1,5 @@
+= Value Representation
+
 > {-# LANGUAGE BangPatterns, RankNTypes, FlexibleContexts, MagicHash #-}
 
 > module Hiss.Data where
@@ -15,7 +17,9 @@
 > import Text.Parsec (ParseError)
 > import Text.Parsec.Pos (SourcePos, initialPos)
 
-= Value Representation
+Here we have some type definitions for primop-implementing functions. They
+differ in the effects they perform and whether they need direct access to the
+continuation value.
 
 > type ExcImpl =
 >     forall r . (Member (Exc SError) r, Member (State SourcePos) r)
@@ -32,7 +36,12 @@
 >                 Member (Exc SError) r)
 >              => [SValue] -> Eff r (AST, Env)
 
+The `Context` will be used to implement hygienic macros as outlined in the
+[Binding as Sets of Scopes](https://www.cs.utah.edu/plt/scope-sets/) paper.
+
 > type Context = Map.Map Int (Set.Set SValue)
+
+`SValue` is the Haskell type corresponding to all first-class Scheme values.
 
 > data SValue = Symbol String
 >             | String String
@@ -90,18 +99,31 @@
 >   show Unbound = "#<unbound>"
 >   show Unspecified = "#<unspecified>"
 
+Scheme lists can be dotted while Haskell lists cannot. Since Scheme lists are
+represented differently we need `injectList` to convert Haskell lists to Scheme
+lists and `ejectList` to do the opposite.
+
 > injectList :: [SValue] -> SValue
 > injectList (v:vs) = Pair v (injectList vs)
 > injectList [] = Nil
 
+> -- FIXME: This should be a complete function and return an error monad.
 > ejectList :: SValue -> [SValue]
 > ejectList (Pair x xs) = x : ejectList xs
 > ejectList Nil = []
 
 = Abstract Syntax Tree and Continuations
 
+The `Positioned` type class is used to extract source positions from both AST:s
+and continuations.
+
 > class Positioned a where
 >   positionOf :: a -> SourcePos
+
+To make the interpreter clearer and faster we translate S-expressions (actually,
+syntax objects) into an explicit abstract syntax tree. The position information
+from syntax objects is also folded into the tree to provide tolerable error
+messages.
 
 > data AST = Lambda SourcePos [String] (Maybe String) AST
 >          | Call SourcePos AST [AST]
@@ -124,10 +146,16 @@
 >   positionOf (Var pos _) = pos
 >   positionOf (Const pos _) = pos
 
+Primops represent useful primitive operations. The implementations can be found
+in `Hiss.Primops`.
+
 > data Primop = Purish ExcImpl
 >             | Impure PrimopImpl
 >             | Applier ApplierImpl
 >             | Evaler EvalerImpl
+
+Continuations represent the remainder of the computation. They form a linked
+stack.
 
 > data Cont = Fn SourcePos Cont Env [AST]
 >           | Arg SourcePos Cont Env SValue [SValue] [AST]
@@ -152,11 +180,22 @@
 
 = Environment
 
+The environment maps variable names to the corresponding values. To implement
+lexical scope environments are represented as linked lists of frames. Since
+Scheme has `set!` and a top level that can be incrementally extended we use hash
+tables to store the bindings instead of alists, `Data.Map` or similar persistent
+associative structures.
+
 > data Env = Lexical Env (H.BasicHashTable String SValue)
 >          | Global (H.BasicHashTable String SValue)
 
 > emptyEnv :: IO Env
 > emptyEnv = Global <$> H.new
+
+As usual, `lookup` reads the value of a variable. Its type is a bit involved but
+all it means is that the lookup operation involves mutable state
+(the environment) and could also fail, in which case we want to be able to
+provide the source position in the error message.
 
 > lookup :: (Member (Exc SError) r, Member (State SourcePos) r,
 >            SetMember Lift (Lift IO) r)
@@ -172,8 +211,14 @@
 >          Just v -> return v
 >          Nothing -> flip Nonbound name <$> get >>= throwExc
 
+`pushFrame` adds a new environment frame that 'inherits' from the provided one.
+It is used when entering a closure.
+
 > pushFrame :: Env -> [(String, SValue)] -> IO Env
 > pushFrame parent kvs = Lexical parent <$> H.fromList kvs
+
+`define` implements toplevel Scheme `define`s and `set` implements `set!`. They
+are effectful in precisely the same way as `lookup`.
 
 > define :: (Member (State SourcePos) r, Member (Exc SError) r,
 >            SetMember Lift (Lift IO) r)
@@ -197,6 +242,8 @@
 
 = Errors
 
+`SError` represents all the various errors that can occur in the interpreter.
+
 > data SError = Nonbound SourcePos String
 >             | LexicalDefine SourcePos String
 >             | NonLambda SourcePos SValue
@@ -209,6 +256,9 @@
 >             | NonError SourcePos
 >             | ParseError SourcePos ParseError
 >               deriving (Show)
+
+HACK: This `Monoid` instance and the `NonError` variant it uses are silly and
+exist to please some type signature somewhere. There should be a better way...
 
 > instance Monoid SError where
 >   mempty = NonError $ initialPos "__no-file__"

@@ -1,3 +1,12 @@
+
+= Primitive Operations
+
+This file contains implementations of primitive operations. These operations are
+not "interesting" enough to be part of the evaluator but nevertheless need to be
+implemented at this level because they perform side effects or would be too slow
+if they were implemented in Scheme using only the operations the evaluator does
+provide (via Church-encoding, closure objects and similar trickery).
+
 > {-# LANGUAGE FlexibleContexts, BangPatterns, GADTs, RankNTypes, MagicHash #-}
 
 > module Hiss.Primops where

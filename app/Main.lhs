@@ -1,3 +1,14 @@
+
+= Interpreter Entry Point
+
+All this does is read the bootstrap Scheme file, wrap the statements found
+therein in a `begin` and then pipe the resulting form through analysis and
+interpretation, either succeeding with a value or failing with an error message.
+
+In addition to implementing a fuller Scheme on top of the restricted one
+provided by the Haskell code the `__bootstrap__.scm` file also parses the
+command line arguments, finds the user code and runs it.
+
 > {-# LANGUAGE ScopedTypeVariables #-}
 
 > import System.Environment (getArgs)
