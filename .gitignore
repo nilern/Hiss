@@ -3,3 +3,4 @@
 *.html
 hiss
 __*__.scm
+.stack-work
