@@ -1,7 +1,7 @@
 (define apply (lambda (f args) (##intr#apply f args)))
 
+(define call-with-current-continuation (lambda (f) (##intr#call/cc f)))
 (define call-with-values (lambda (f g) (##intr#call/vs f g)))
-
 (define values (##intr#values))
 
 (define eq? (lambda (a b) (##intr#eq? a b)))
@@ -9,6 +9,12 @@
 (define eqv? (lambda (a b) (##intr#eqv? a b)))
 
 (define equal? (lambda (a b) (##intr#equal? a b)))
+
+(define + (lambda (a b) (##intr#add a b)))
+(define - (lambda (a b) (##intr#sub a b)))
+(define * (lambda (a b) (##intr#mul a b)))
+
+(define < (lambda (a b) (##intr#lt a b)))
 
 (define cons (lambda (head tail) (##intr#cons head tail)))
 
